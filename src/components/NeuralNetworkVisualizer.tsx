@@ -1,12 +1,15 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Play, Pause } from '@phosphor-icons/react'
+import { Play, Pause, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react'
+import { audioSynthesizer } from '@/lib/audioSynthesizer'
 
 export function NeuralNetworkVisualizer() {
   const [isAnimating, setIsAnimating] = useState(false)
   const [activeLayer, setActiveLayer] = useState(0)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const previousLayerRef = useRef(-1)
 
   const layers = [
     { name: 'Input', nodes: 3, color: 'oklch(0.70 0.12 210)', glowColor: 'rgba(115, 160, 255, 0.8)' },
@@ -22,6 +25,10 @@ export function NeuralNetworkVisualizer() {
   }, [layers.length])
 
   useEffect(() => {
+    audioSynthesizer.setEnabled(soundEnabled)
+  }, [soundEnabled])
+
+  useEffect(() => {
     if (!isAnimating) return
 
     const interval = setInterval(() => {
@@ -35,6 +42,28 @@ export function NeuralNetworkVisualizer() {
 
     return () => clearInterval(interval)
   }, [isAnimating, layers.length])
+
+  useEffect(() => {
+    if (!isAnimating || activeLayer === previousLayerRef.current) return
+    
+    previousLayerRef.current = activeLayer
+
+    if (soundEnabled) {
+      const currentLayer = layers[activeLayer]
+      audioSynthesizer.playLayerActivation(activeLayer, currentLayer.nodes)
+
+      if (activeLayer > 0) {
+        const avgActivation = nodeActivations[activeLayer].reduce((a, b) => a + b, 0) / nodeActivations[activeLayer].length
+        audioSynthesizer.playSignalFlow(activeLayer - 1, activeLayer, avgActivation)
+      }
+
+      nodeActivations[activeLayer].forEach((activation, nodeIdx) => {
+        setTimeout(() => {
+          audioSynthesizer.playNeuronPulse(activation, activeLayer, nodeIdx)
+        }, nodeIdx * 80 + 600)
+      })
+    }
+  }, [activeLayer, isAnimating, soundEnabled, layers, nodeActivations])
 
   const renderConnections = (fromLayer: number, toLayer: number, svgWidth: number, svgHeight: number) => {
     const fromNodes = layers[fromLayer].nodes
@@ -141,7 +170,7 @@ export function NeuralNetworkVisualizer() {
       <CardHeader>
         <CardTitle>Neural Network Flow</CardTitle>
         <CardDescription>
-          Watch light flow through the neural network as signals pass between neurons
+          Watch light flow through the neural network as signals pass between neurons, with audio feedback for each activation
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -302,9 +331,19 @@ export function NeuralNetworkVisualizer() {
           </div>
         </div>
 
-        <div className="flex justify-center">
+        <div className="flex justify-center gap-3 flex-wrap">
           <Button
-            onClick={() => setIsAnimating(!isAnimating)}
+            onClick={() => {
+              const newState = !isAnimating
+              setIsAnimating(newState)
+              if (soundEnabled) {
+                if (newState) {
+                  audioSynthesizer.playStartSound()
+                } else {
+                  audioSynthesizer.playStopSound()
+                }
+              }
+            }}
             size="lg"
           >
             {isAnimating ? (
@@ -319,6 +358,24 @@ export function NeuralNetworkVisualizer() {
               </>
             )}
           </Button>
+          
+          <Button
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            size="lg"
+            variant="outline"
+          >
+            {soundEnabled ? (
+              <>
+                <SpeakerHigh weight="fill" />
+                Sound On
+              </>
+            ) : (
+              <>
+                <SpeakerSlash weight="fill" />
+                Sound Off
+              </>
+            )}
+          </Button>
         </div>
 
         <div className="bg-muted/30 rounded-xl p-6 space-y-4">
@@ -330,8 +387,8 @@ export function NeuralNetworkVisualizer() {
             </div>
             <p className="text-sm text-muted-foreground">
               {isAnimating
-                ? 'Watch the glowing particles travel along connections and light up neurons!'
-                : 'Neural networks pass information from layer to layer, just like signals traveling through wires'}
+                ? 'Watch the glowing particles travel along connections and light up neurons! Listen to the neural signals as they flow through each layer. 🎵'
+                : 'Neural networks pass information from layer to layer, just like signals traveling through wires. Turn on sound to hear the neural activity!'}
             </p>
           </div>
           
@@ -352,7 +409,7 @@ export function NeuralNetworkVisualizer() {
               </div>
             </div>
             <p className="text-xs text-center text-muted-foreground mt-3">
-              Higher activation = brighter glow, stronger pulse, and larger ripples! 💫
+              Higher activation = brighter glow, stronger pulse, larger ripples, and higher-pitched sound! 💫
             </p>
           </div>
         </div>
