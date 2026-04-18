@@ -30,20 +30,37 @@ export function NeuralNetworkVisualizer() {
     return () => clearInterval(interval)
   }, [isAnimating, layers.length])
 
-  const renderConnections = (fromLayer: number, toLayer: number) => {
+  const renderConnections = (fromLayer: number, toLayer: number, svgWidth: number, svgHeight: number) => {
     const fromNodes = layers[fromLayer].nodes
     const toNodes = layers[toLayer].nodes
     const connections = []
+    
+    const nodeSize = 56
+    const nodeGap = 12
 
     for (let i = 0; i < fromNodes; i++) {
       for (let j = 0; j < toNodes; j++) {
         const isActive = isAnimating && activeLayer === fromLayer
         const connectionId = `${fromLayer}-${i}-${j}`
         
+        const fromTotalHeight = fromNodes * nodeSize + (fromNodes - 1) * nodeGap
+        const toTotalHeight = toNodes * nodeSize + (toNodes - 1) * nodeGap
+        
+        const fromStartY = (svgHeight - fromTotalHeight) / 2
+        const toStartY = (svgHeight - toTotalHeight) / 2
+        
+        const fromY = fromStartY + i * (nodeSize + nodeGap) + nodeSize / 2
+        const toY = toStartY + j * (nodeSize + nodeGap) + nodeSize / 2
+        
+        const x1 = 0
+        const y1 = fromY
+        const x2 = svgWidth
+        const y2 = toY
+        
         connections.push(
           <g key={connectionId}>
             <defs>
-              <linearGradient id={`gradient-${connectionId}`} x1="0%" y1="0%" x2="100%" y2="0%">
+              <linearGradient id={`gradient-${connectionId}`} x1={x1} y1={y1} x2={x2} y2={y2} gradientUnits="userSpaceOnUse">
                 <motion.stop
                   offset="0%"
                   stopColor={layers[fromLayer].color}
@@ -96,10 +113,10 @@ export function NeuralNetworkVisualizer() {
             </defs>
             
             <motion.line
-              x1="0"
-              y1={`${((i + 1) / (fromNodes + 1)) * 100}%`}
-              x2="100"
-              y2={`${((j + 1) / (toNodes + 1)) * 100}%`}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
               stroke={`url(#gradient-${connectionId})`}
               strokeWidth={isActive ? 3 : 1.5}
               filter={`url(#glow-${connectionId})`}
@@ -123,81 +140,96 @@ export function NeuralNetworkVisualizer() {
       <CardContent className="space-y-6">
         <div className="relative bg-gradient-to-br from-muted/30 to-muted/10 p-8 rounded-xl min-h-[400px] overflow-x-auto">
           <div className="flex items-center justify-between gap-12 min-w-[900px]">
-            {layers.map((layer, layerIdx) => (
-              <div key={layerIdx} className="flex-1 relative">
-                {layerIdx > 0 && (
-                  <svg
-                    className="absolute top-0 right-full w-12 h-full"
-                    style={{ transform: 'translateX(50%)' }}
-                  >
-                    {renderConnections(layerIdx - 1, layerIdx)}
-                  </svg>
-                )}
-                
-                <div className="flex flex-col items-center gap-3">
-                  <div className="text-sm font-semibold text-center mb-2">
-                    {layer.name}
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    {Array.from({ length: layer.nodes }, (_, nodeIdx) => {
-                      const isNodeActive = isAnimating && activeLayer === layerIdx
-                      return (
-                        <motion.div
-                          key={nodeIdx}
-                          className="relative"
-                        >
+            {layers.map((layer, layerIdx) => {
+              const maxNodes = Math.max(...layers.map(l => l.nodes))
+              const nodeSize = 56
+              const nodeGap = 12
+              const containerHeight = maxNodes * nodeSize + (maxNodes - 1) * nodeGap
+              const svgWidth = 96
+              
+              return (
+                <div key={layerIdx} className="flex-1 relative">
+                  {layerIdx > 0 && (
+                    <svg
+                      className="absolute top-0 right-full"
+                      width={svgWidth}
+                      height={containerHeight}
+                      style={{ 
+                        transform: 'translateX(50%)',
+                        overflow: 'visible'
+                      }}
+                      viewBox={`0 0 ${svgWidth} ${containerHeight}`}
+                      preserveAspectRatio="none"
+                    >
+                      {renderConnections(layerIdx - 1, layerIdx, svgWidth, containerHeight)}
+                    </svg>
+                  )}
+                  
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="text-sm font-semibold text-center mb-2">
+                      {layer.name}
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      {Array.from({ length: layer.nodes }, (_, nodeIdx) => {
+                        const isNodeActive = isAnimating && activeLayer === layerIdx
+                        return (
                           <motion.div
-                            className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-sm relative z-10"
-                            style={{
-                              backgroundColor: layer.color,
-                            }}
-                            animate={isNodeActive ? {
-                              scale: [1, 1.15, 1],
-                              boxShadow: [
-                                `0 0 0px ${layer.glowColor}`,
-                                `0 0 30px ${layer.glowColor}, 0 0 15px ${layer.glowColor}`,
-                                `0 0 0px ${layer.glowColor}`,
-                              ],
-                            } : {
-                              scale: 1,
-                              boxShadow: `0 0 0px ${layer.glowColor}`,
-                            }}
-                            transition={{
-                              duration: 1,
-                              repeat: isNodeActive ? Infinity : 0,
-                              delay: nodeIdx * 0.08,
-                              ease: "easeInOut"
-                            }}
+                            key={nodeIdx}
+                            className="relative"
                           >
-                            {nodeIdx + 1}
-                          </motion.div>
-                          
-                          {isNodeActive && (
                             <motion.div
-                              className="absolute inset-0 rounded-full"
+                              className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-sm relative z-10"
                               style={{
                                 backgroundColor: layer.color,
                               }}
-                              initial={{ scale: 1, opacity: 0.6 }}
-                              animate={{
-                                scale: [1, 1.8, 2.2],
-                                opacity: [0.6, 0.3, 0],
+                              animate={isNodeActive ? {
+                                scale: [1, 1.15, 1],
+                                boxShadow: [
+                                  `0 0 0px ${layer.glowColor}`,
+                                  `0 0 30px ${layer.glowColor}, 0 0 15px ${layer.glowColor}`,
+                                  `0 0 0px ${layer.glowColor}`,
+                                ],
+                              } : {
+                                scale: 1,
+                                boxShadow: `0 0 0px ${layer.glowColor}`,
                               }}
                               transition={{
                                 duration: 1,
-                                repeat: Infinity,
+                                repeat: isNodeActive ? Infinity : 0,
                                 delay: nodeIdx * 0.08,
-                                ease: "easeOut"
+                                ease: "easeInOut"
                               }}
-                            />
-                          )}
-                        </motion.div>
-                      )
-                    })}
+                            >
+                              {nodeIdx + 1}
+                            </motion.div>
+                            
+                            {isNodeActive && (
+                              <motion.div
+                                className="absolute inset-0 rounded-full"
+                                style={{
+                                  backgroundColor: layer.color,
+                                }}
+                                initial={{ scale: 1, opacity: 0.6 }}
+                                animate={{
+                                  scale: [1, 1.8, 2.2],
+                                  opacity: [0.6, 0.3, 0],
+                                }}
+                                transition={{
+                                  duration: 1,
+                                  repeat: Infinity,
+                                  delay: nodeIdx * 0.08,
+                                  ease: "easeOut"
+                                }}
+                              />
+                            )}
+                          </motion.div>
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
