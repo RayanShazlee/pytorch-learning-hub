@@ -71,6 +71,7 @@ export function NeuralNetworkVisualizer() {
     const connections = []
     
     const nodeSize = 56
+    const nodeRadius = nodeSize / 2
     const nodeGap = 12
 
     for (let i = 0; i < fromNodes; i++) {
@@ -84,13 +85,18 @@ export function NeuralNetworkVisualizer() {
         const fromStartY = (svgHeight - fromTotalHeight) / 2
         const toStartY = (svgHeight - toTotalHeight) / 2
         
-        const fromY = fromStartY + i * (nodeSize + nodeGap) + nodeSize / 2
-        const toY = toStartY + j * (nodeSize + nodeGap) + nodeSize / 2
+        const fromCenterY = fromStartY + i * (nodeSize + nodeGap) + nodeSize / 2
+        const toCenterY = toStartY + j * (nodeSize + nodeGap) + nodeSize / 2
         
-        const x1 = 0
-        const y1 = fromY
-        const x2 = svgWidth
-        const y2 = toY
+        const dx = svgWidth
+        const dy = toCenterY - fromCenterY
+        const distance = Math.sqrt(dx * dx + dy * dy)
+        const angle = Math.atan2(dy, dx)
+        
+        const x1 = nodeRadius * Math.cos(angle)
+        const y1 = fromCenterY + nodeRadius * Math.sin(angle)
+        const x2 = svgWidth - nodeRadius * Math.cos(angle)
+        const y2 = toCenterY - nodeRadius * Math.sin(angle)
         
         const pathLength = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
         const delay = i * 0.08 + j * 0.04
@@ -103,9 +109,9 @@ export function NeuralNetworkVisualizer() {
               x2={x2}
               y2={y2}
               stroke={layers[fromLayer].color}
-              strokeWidth={1}
+              strokeWidth={2.5}
               strokeLinecap="round"
-              opacity={0.15}
+              opacity={0.2}
             />
             
             {isActive && (
@@ -116,34 +122,13 @@ export function NeuralNetworkVisualizer() {
                   x2={x2}
                   y2={y2}
                   stroke={layers[fromLayer].color}
-                  strokeWidth={2.5}
+                  strokeWidth={4}
                   strokeLinecap="round"
                   strokeDasharray={pathLength}
                   strokeDashoffset={pathLength}
                   animate={{
                     strokeDashoffset: [pathLength, 0],
-                    opacity: [0, 1, 0.4]
-                  }}
-                  transition={{
-                    duration: 0.6,
-                    repeat: Infinity,
-                    delay: delay,
-                    ease: "easeOut",
-                    repeatDelay: 0.6
-                  }}
-                  style={{
-                    filter: `drop-shadow(0 0 3px ${layers[fromLayer].glowColor})`
-                  }}
-                />
-                
-                <motion.circle
-                  r={3}
-                  fill={layers[fromLayer].glowColor}
-                  animate={{
-                    cx: [x1, x2],
-                    cy: [y1, y2],
-                    opacity: [1, 1, 0],
-                    scale: [1, 1, 0.5]
+                    opacity: [0, 1, 0.5]
                   }}
                   transition={{
                     duration: 0.6,
@@ -154,6 +139,27 @@ export function NeuralNetworkVisualizer() {
                   }}
                   style={{
                     filter: `drop-shadow(0 0 4px ${layers[fromLayer].glowColor})`
+                  }}
+                />
+                
+                <motion.circle
+                  r={4}
+                  fill={layers[fromLayer].glowColor}
+                  animate={{
+                    cx: [x1, x2],
+                    cy: [y1, y2],
+                    opacity: [1, 1, 0],
+                    scale: [1, 1.2, 0.5]
+                  }}
+                  transition={{
+                    duration: 0.6,
+                    repeat: Infinity,
+                    delay: delay,
+                    ease: "easeOut",
+                    repeatDelay: 0.6
+                  }}
+                  style={{
+                    filter: `drop-shadow(0 0 6px ${layers[fromLayer].glowColor})`
                   }}
                 />
               </>
