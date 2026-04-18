@@ -52,9 +52,9 @@ export function NeuralNetworkVisualizer() {
         const fromY = fromStartY + i * (nodeSize + nodeGap) + nodeSize / 2
         const toY = toStartY + j * (nodeSize + nodeGap) + nodeSize / 2
         
-        const x1 = nodeSize / 2
+        const x1 = 0
         const y1 = fromY
-        const x2 = svgWidth - nodeSize / 2
+        const x2 = svgWidth
         const y2 = toY
         
         connections.push(
@@ -114,7 +114,7 @@ export function NeuralNetworkVisualizer() {
                       width={svgWidth}
                       height={containerHeight}
                       style={{ 
-                        transform: 'translateX(50%)',
+                        transform: 'translateX(calc(50% + 28px))',
                         overflow: 'visible'
                       }}
                       viewBox={`0 0 ${svgWidth} ${containerHeight}`}
