@@ -74,28 +74,27 @@ export function NeuralNetworkVisualizer() {
     const nodeRadius = nodeSize / 2
     const nodeGap = 12
 
+    const fromTotalHeight = fromNodes * nodeSize + (fromNodes - 1) * nodeGap
+    const toTotalHeight = toNodes * nodeSize + (toNodes - 1) * nodeGap
+    
+    const fromStartY = (svgHeight - fromTotalHeight) / 2
+    const toStartY = (svgHeight - toTotalHeight) / 2
+
     for (let i = 0; i < fromNodes; i++) {
       for (let j = 0; j < toNodes; j++) {
         const isActive = isAnimating && activeLayer === fromLayer
         const connectionId = `conn-${fromLayer}-${toLayer}-${i}-${j}`
         
-        const fromTotalHeight = fromNodes * nodeSize + (fromNodes - 1) * nodeGap
-        const toTotalHeight = toNodes * nodeSize + (toNodes - 1) * nodeGap
-        
-        const fromStartY = (svgHeight - fromTotalHeight) / 2
-        const toStartY = (svgHeight - toTotalHeight) / 2
-        
-        const fromCenterY = fromStartY + i * (nodeSize + nodeGap) + nodeSize / 2
-        const toCenterY = toStartY + j * (nodeSize + nodeGap) + nodeSize / 2
+        const fromCenterY = fromStartY + i * (nodeSize + nodeGap) + nodeRadius
+        const toCenterY = toStartY + j * (nodeSize + nodeGap) + nodeRadius
         
         const dx = svgWidth
         const dy = toCenterY - fromCenterY
-        const distance = Math.sqrt(dx * dx + dy * dy)
         const angle = Math.atan2(dy, dx)
         
-        const x1 = nodeRadius * Math.cos(angle)
+        const x1 = nodeRadius + nodeRadius * Math.cos(angle)
         const y1 = fromCenterY + nodeRadius * Math.sin(angle)
-        const x2 = svgWidth - nodeRadius * Math.cos(angle)
+        const x2 = svgWidth - nodeRadius + nodeRadius * Math.cos(angle)
         const y2 = toCenterY - nodeRadius * Math.sin(angle)
         
         const pathLength = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
