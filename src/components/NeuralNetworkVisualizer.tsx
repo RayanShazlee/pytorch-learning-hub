@@ -12,10 +12,34 @@ export function NeuralNetworkVisualizer() {
   const previousLayerRef = useRef(-1)
 
   const layers = [
-    { name: 'Input', nodes: 3, color: 'oklch(0.70 0.12 210)', glowColor: 'rgba(115, 160, 255, 0.8)' },
-    { name: 'Hidden 1', nodes: 5, color: 'oklch(0.45 0.15 290)', glowColor: 'rgba(133, 107, 255, 0.8)' },
-    { name: 'Hidden 2', nodes: 4, color: 'oklch(0.72 0.14 25)', glowColor: 'rgba(255, 140, 105, 0.8)' },
-    { name: 'Output', nodes: 2, color: 'oklch(0.85 0.15 95)', glowColor: 'rgba(255, 230, 110, 0.8)' },
+    { 
+      name: 'Input', 
+      nodes: 3, 
+      color: 'oklch(0.65 0.25 330)', 
+      glowColor: 'rgba(255, 50, 150, 0.9)',
+      gradient: 'linear-gradient(135deg, oklch(0.65 0.25 330), oklch(0.75 0.22 350))'
+    },
+    { 
+      name: 'Hidden 1', 
+      nodes: 5, 
+      color: 'oklch(0.60 0.25 270)', 
+      glowColor: 'rgba(150, 80, 255, 0.9)',
+      gradient: 'linear-gradient(135deg, oklch(0.60 0.25 270), oklch(0.70 0.22 290))'
+    },
+    { 
+      name: 'Hidden 2', 
+      nodes: 4, 
+      color: 'oklch(0.65 0.25 200)', 
+      glowColor: 'rgba(0, 180, 255, 0.9)',
+      gradient: 'linear-gradient(135deg, oklch(0.65 0.25 200), oklch(0.75 0.22 180))'
+    },
+    { 
+      name: 'Output', 
+      nodes: 2, 
+      color: 'oklch(0.70 0.25 140)', 
+      glowColor: 'rgba(100, 255, 150, 0.9)',
+      gradient: 'linear-gradient(135deg, oklch(0.70 0.25 140), oklch(0.80 0.22 120))'
+    },
   ]
 
   const nodeActivations = useMemo(() => {
@@ -100,17 +124,32 @@ export function NeuralNetworkVisualizer() {
         const pathLength = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
         const delay = i * 0.08 + j * 0.04
         
+        const gradientId = `gradient-${fromLayer}-${toLayer}-${i}-${j}`
+        
         connections.push(
           <g key={connectionId}>
+            <defs>
+              <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor={layers[fromLayer].color} stopOpacity="0.4" />
+                <stop offset="50%" stopColor={layers[toLayer].color} stopOpacity="0.4" />
+                <stop offset="100%" stopColor={layers[toLayer].color} stopOpacity="0.4" />
+              </linearGradient>
+              <linearGradient id={`${gradientId}-active`} x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor={layers[fromLayer].color} stopOpacity="1" />
+                <stop offset="50%" stopColor={layers[toLayer].color} stopOpacity="1" />
+                <stop offset="100%" stopColor={layers[toLayer].color} stopOpacity="1" />
+              </linearGradient>
+            </defs>
+            
             <motion.line
               x1={x1}
               y1={y1}
               x2={x2}
               y2={y2}
-              stroke={layers[fromLayer].color}
+              stroke={`url(#${gradientId})`}
               strokeWidth={2.5}
               strokeLinecap="round"
-              opacity={0.2}
+              opacity={0.3}
             />
             
             {isActive && (
@@ -120,14 +159,14 @@ export function NeuralNetworkVisualizer() {
                   y1={y1}
                   x2={x2}
                   y2={y2}
-                  stroke={layers[fromLayer].color}
-                  strokeWidth={4}
+                  stroke={`url(#${gradientId}-active)`}
+                  strokeWidth={5}
                   strokeLinecap="round"
                   strokeDasharray={pathLength}
                   strokeDashoffset={pathLength}
                   animate={{
                     strokeDashoffset: [pathLength, 0],
-                    opacity: [0, 1, 0.5]
+                    opacity: [0, 1, 0.6]
                   }}
                   transition={{
                     duration: 0.6,
@@ -137,18 +176,18 @@ export function NeuralNetworkVisualizer() {
                     repeatDelay: 0.6
                   }}
                   style={{
-                    filter: `drop-shadow(0 0 4px ${layers[fromLayer].glowColor})`
+                    filter: `drop-shadow(0 0 6px ${layers[fromLayer].glowColor}) drop-shadow(0 0 3px ${layers[toLayer].glowColor})`
                   }}
                 />
                 
                 <motion.circle
-                  r={4}
+                  r={5}
                   fill={layers[fromLayer].glowColor}
                   animate={{
                     cx: [x1, x2],
                     cy: [y1, y2],
                     opacity: [1, 1, 0],
-                    scale: [1, 1.2, 0.5]
+                    scale: [1, 1.4, 0.4]
                   }}
                   transition={{
                     duration: 0.6,
@@ -158,7 +197,28 @@ export function NeuralNetworkVisualizer() {
                     repeatDelay: 0.6
                   }}
                   style={{
-                    filter: `drop-shadow(0 0 6px ${layers[fromLayer].glowColor})`
+                    filter: `drop-shadow(0 0 8px ${layers[fromLayer].glowColor})`
+                  }}
+                />
+                
+                <motion.circle
+                  r={3}
+                  fill={layers[toLayer].glowColor}
+                  animate={{
+                    cx: [x1, x2],
+                    cy: [y1, y2],
+                    opacity: [1, 1, 0],
+                    scale: [1, 1.6, 0.3]
+                  }}
+                  transition={{
+                    duration: 0.6,
+                    repeat: Infinity,
+                    delay: delay + 0.15,
+                    ease: "easeOut",
+                    repeatDelay: 0.6
+                  }}
+                  style={{
+                    filter: `drop-shadow(0 0 10px ${layers[toLayer].glowColor})`
                   }}
                 />
               </>
@@ -179,7 +239,9 @@ export function NeuralNetworkVisualizer() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="relative bg-gradient-to-br from-muted/30 to-muted/10 p-8 rounded-xl min-h-[400px] overflow-x-auto">
+        <div className="relative bg-gradient-to-br from-muted/30 to-muted/10 p-8 rounded-xl min-h-[400px] overflow-x-auto" style={{
+          background: 'linear-gradient(135deg, rgba(255,50,150,0.05) 0%, rgba(150,80,255,0.05) 25%, rgba(0,180,255,0.05) 50%, rgba(100,255,150,0.05) 75%, rgba(255,50,150,0.05) 100%)'
+        }}>
           <div className="flex items-center justify-between gap-12 min-w-[900px]">
             {layers.map((layer, layerIdx) => {
               const maxNodes = Math.max(...layers.map(l => l.nodes))
@@ -229,26 +291,27 @@ export function NeuralNetworkVisualizer() {
                             <motion.div
                               className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-sm relative z-10"
                               style={{
-                                backgroundColor: layer.color,
+                                background: layer.gradient,
+                                border: '2px solid rgba(255,255,255,0.3)'
                               }}
                               animate={(isNodeActive || isNodeReceiving) ? {
                                 scale: [1, scaleMax, 1],
                                 boxShadow: [
-                                  `0 0 ${glowSize * 0.3}px ${layer.glowColor}`,
-                                  `0 0 ${glowSize}px ${layer.glowColor}, 0 0 ${glowSize / 2}px ${layer.glowColor}, inset 0 0 ${glowSize * 0.4}px ${layer.glowColor}`,
-                                  `0 0 ${glowSize * 0.3}px ${layer.glowColor}`,
+                                  `0 0 ${glowSize * 0.4}px ${layer.glowColor}, inset 0 0 ${glowSize * 0.2}px ${layer.glowColor}`,
+                                  `0 0 ${glowSize * 1.2}px ${layer.glowColor}, 0 0 ${glowSize / 2}px ${layer.glowColor}, inset 0 0 ${glowSize * 0.6}px ${layer.glowColor}`,
+                                  `0 0 ${glowSize * 0.4}px ${layer.glowColor}, inset 0 0 ${glowSize * 0.2}px ${layer.glowColor}`,
                                 ],
-                                opacity: [0.8, 1, 0.8],
+                                opacity: [0.85, 1, 0.85],
                                 filter: [
-                                  'brightness(1)',
-                                  `brightness(${1 + activation * 0.4})`,
-                                  'brightness(1)'
+                                  'brightness(1.1) saturate(1.2)',
+                                  `brightness(${1.3 + activation * 0.4}) saturate(1.5)`,
+                                  'brightness(1.1) saturate(1.2)'
                                 ]
                               } : {
                                 scale: 1,
-                                boxShadow: `0 0 0px ${layer.glowColor}`,
-                                opacity: 0.65,
-                                filter: 'brightness(0.9)'
+                                boxShadow: `0 0 ${glowSize * 0.2}px ${layer.glowColor}`,
+                                opacity: 0.7,
+                                filter: 'brightness(0.9) saturate(1)'
                               }}
                               transition={{
                                 duration: 1.2,
@@ -258,15 +321,15 @@ export function NeuralNetworkVisualizer() {
                                 repeatDelay: 0
                               }}
                             >
-                              <span className="relative z-10 drop-shadow-lg">{nodeIdx + 1}</span>
+                              <span className="relative z-10 drop-shadow-lg text-shadow">{nodeIdx + 1}</span>
                               <motion.div
                                 className="absolute inset-0 rounded-full pointer-events-none"
                                 style={{
-                                  background: `radial-gradient(circle, rgba(255,255,255,${activation * 0.6}) 0%, rgba(255,255,255,${activation * 0.2}) 50%, transparent 70%)`,
+                                  background: `radial-gradient(circle, rgba(255,255,255,${activation * 0.7}) 0%, rgba(255,255,255,${activation * 0.3}) 40%, transparent 70%)`,
                                 }}
                                 animate={(isNodeActive || isNodeReceiving) ? {
                                   scale: [1, 1.3, 1],
-                                  opacity: [pulseIntensity * 0.6, pulseIntensity * 0.9, pulseIntensity * 0.6],
+                                  opacity: [pulseIntensity * 0.7, pulseIntensity, pulseIntensity * 0.7],
                                   rotate: [0, 180, 360]
                                 } : {
                                   opacity: 0,
@@ -286,13 +349,13 @@ export function NeuralNetworkVisualizer() {
                                 <motion.div
                                   className="absolute inset-0 rounded-full pointer-events-none"
                                   style={{
-                                    backgroundColor: layer.color,
-                                    opacity: 0.4 * pulseIntensity
+                                    background: `radial-gradient(circle, ${layer.glowColor}, transparent 70%)`,
+                                    opacity: 0.5 * pulseIntensity
                                   }}
-                                  initial={{ scale: 1, opacity: 0.4 * pulseIntensity }}
+                                  initial={{ scale: 1, opacity: 0.5 * pulseIntensity }}
                                   animate={{
                                     scale: [1, rippleScale, rippleScale + 0.3],
-                                    opacity: [0.4 * pulseIntensity, 0.15 * pulseIntensity, 0],
+                                    opacity: [0.5 * pulseIntensity, 0.2 * pulseIntensity, 0],
                                   }}
                                   transition={{
                                     duration: 1.2,
@@ -306,13 +369,13 @@ export function NeuralNetworkVisualizer() {
                                   <motion.div
                                     className="absolute inset-0 rounded-full pointer-events-none"
                                     style={{
-                                      backgroundColor: layer.color,
-                                      opacity: 0.35
+                                      background: `radial-gradient(circle, ${layer.glowColor}, transparent 60%)`,
+                                      opacity: 0.4
                                     }}
-                                    initial={{ scale: 1, opacity: 0.35 }}
+                                    initial={{ scale: 1, opacity: 0.4 }}
                                     animate={{
                                       scale: [1, rippleScale + 0.4, rippleScale + 0.8],
-                                      opacity: [0.35, 0.15, 0],
+                                      opacity: [0.4, 0.2, 0],
                                     }}
                                     transition={{
                                       duration: 1.5,
@@ -398,23 +461,45 @@ export function NeuralNetworkVisualizer() {
           </div>
           
           <div className="bg-background/50 rounded-lg p-4">
-            <div className="text-sm font-semibold mb-3 text-center">Neuron Activation Intensity</div>
+            <div className="text-sm font-semibold mb-3 text-center">Layer Colors</div>
+            <div className="flex items-center justify-center gap-4 text-xs flex-wrap mb-4">
+              {layers.map((layer) => (
+                <div key={layer.name} className="flex items-center gap-2">
+                  <div 
+                    className="w-4 h-4 rounded-full shadow-lg" 
+                    style={{ 
+                      background: layer.gradient,
+                      boxShadow: `0 0 8px ${layer.glowColor}` 
+                    }}
+                  />
+                  <span className="text-muted-foreground">{layer.name}</span>
+                </div>
+              ))}
+            </div>
+            
+            <div className="text-sm font-semibold mb-3 text-center pt-2 border-t border-border/50">Neuron Activation Intensity</div>
             <div className="flex items-center justify-center gap-4 text-xs flex-wrap">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-primary/40" />
+                <div className="w-3 h-3 rounded-full opacity-60" style={{ background: layers[0].gradient }} />
                 <span className="text-muted-foreground">Low (40-65%)</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3.5 h-3.5 rounded-full bg-primary/70 shadow-sm shadow-primary/30" />
+                <div className="w-3.5 h-3.5 rounded-full opacity-80 shadow-sm" style={{ 
+                  background: layers[1].gradient,
+                  boxShadow: `0 0 4px ${layers[1].glowColor}` 
+                }} />
                 <span className="text-muted-foreground">Medium (65-80%)</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-primary shadow-lg shadow-primary/50" />
+                <div className="w-4 h-4 rounded-full shadow-lg" style={{ 
+                  background: layers[2].gradient,
+                  boxShadow: `0 0 8px ${layers[2].glowColor}` 
+                }} />
                 <span className="text-muted-foreground">High (80-100%)</span>
               </div>
             </div>
             <p className="text-xs text-center text-muted-foreground mt-3">
-              Higher activation = brighter glow, stronger pulse, larger ripples, and higher-pitched sound! 💫
+              Higher activation = brighter glow, stronger pulse, larger ripples, and higher-pitched sound! 💫🌈
             </p>
           </div>
         </div>
