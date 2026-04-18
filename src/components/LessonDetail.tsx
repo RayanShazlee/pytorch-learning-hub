@@ -6,6 +6,11 @@ import type { Lesson } from '@/lib/lessons'
 import { TensorVisualizer } from './TensorVisualizer'
 import { NeuralNetworkVisualizer } from './NeuralNetworkVisualizer'
 import { TrainingSimulator } from './TrainingSimulator'
+import { AIBrainVisual } from './visuals/AIBrainVisual'
+import { PyTorchLogoVisual } from './visuals/PyTorchLogoVisual'
+import { TensorOperationVisual } from './visuals/TensorOperationVisual'
+import { LayersFlowVisual } from './visuals/LayersFlowVisual'
+import { ActivationFunctionVisual } from './visuals/ActivationFunctionVisual'
 
 interface LessonDetailProps {
   lesson: Lesson
@@ -20,32 +25,38 @@ export function LessonDetail({ lesson, onBack, onComplete, isCompleted }: Lesson
       case 'what-is-ai':
         return (
           <div className="space-y-6">
+            <AIBrainVisual />
+            
             <Card className="bg-gradient-to-br from-violet/5 to-primary/5 border-violet/20">
               <CardContent className="pt-6">
                 <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-violet to-primary bg-clip-text text-transparent">
                   What is Artificial Intelligence?
                 </h3>
                 <div className="prose prose-lg max-w-none space-y-4">
-                  <p className="text-lg">
+                  <p className="text-lg text-center">
                     <strong>Artificial Intelligence (AI)</strong> is like teaching computers to think and learn, just like you do! 🧠✨
                   </p>
-                  <div className="bg-card p-6 rounded-xl space-y-3 border-2 border-violet/20">
-                    <h4 className="font-bold text-xl text-violet">How Humans Learn:</h4>
-                    <ul className="space-y-2 text-base">
-                      <li>👀 You see a cat for the first time</li>
-                      <li>🧠 Your brain notices: "It has fur, whiskers, and says meow"</li>
-                      <li>📚 Next time you see something similar, you know it's a cat!</li>
-                    </ul>
+                  
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="bg-card p-6 rounded-xl space-y-3 border-2 border-violet/20">
+                      <h4 className="font-bold text-xl text-violet">👤 How Humans Learn:</h4>
+                      <ul className="space-y-2 text-base">
+                        <li>👀 You see a cat for the first time</li>
+                        <li>🧠 Your brain notices: "It has fur, whiskers, and says meow"</li>
+                        <li>📚 Next time you see something similar, you know it's a cat!</li>
+                      </ul>
+                    </div>
+                    <div className="bg-card p-6 rounded-xl space-y-3 border-2 border-primary/20">
+                      <h4 className="font-bold text-xl text-primary">🤖 How AI Learns:</h4>
+                      <ul className="space-y-2 text-base">
+                        <li>👁️ We show the computer thousands of cat pictures</li>
+                        <li>💻 It finds patterns: "Cats have pointy ears and whiskers"</li>
+                        <li>🎯 Now it can recognize cats in new pictures!</li>
+                      </ul>
+                    </div>
                   </div>
-                  <div className="bg-card p-6 rounded-xl space-y-3 border-2 border-primary/20">
-                    <h4 className="font-bold text-xl text-primary">How AI Learns:</h4>
-                    <ul className="space-y-2 text-base">
-                      <li>👁️ We show the computer thousands of cat pictures</li>
-                      <li>💻 It finds patterns: "Cats have pointy ears and whiskers"</li>
-                      <li>🎯 Now it can recognize cats in new pictures!</li>
-                    </ul>
-                  </div>
-                  <p className="text-lg font-semibold bg-gradient-to-r from-violet via-primary to-cyan bg-clip-text text-transparent">
+                  
+                  <p className="text-lg font-semibold bg-gradient-to-r from-violet via-primary to-cyan bg-clip-text text-transparent text-center">
                     AI is everywhere! It helps with voice assistants, game recommendations, face filters on photos, and so much more!
                   </p>
                 </div>
@@ -57,13 +68,15 @@ export function LessonDetail({ lesson, onBack, onComplete, isCompleted }: Lesson
       case 'what-is-pytorch':
         return (
           <div className="space-y-6">
+            <PyTorchLogoVisual />
+            
             <Card className="bg-gradient-to-br from-orange/5 to-accent/5 border-orange/20">
               <CardContent className="pt-6">
-                <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-orange to-accent bg-clip-text text-transparent">
+                <h3 className="text-2xl font-bold mb-4 text-center bg-gradient-to-r from-orange to-accent bg-clip-text text-transparent">
                   Meet PyTorch - Your AI Building Toolkit! ⚡
                 </h3>
                 <div className="prose prose-lg max-w-none space-y-4">
-                  <p className="text-lg">
+                  <p className="text-lg text-center">
                     <strong>PyTorch</strong> is like a super-powered LEGO set for building AI! Just like you use LEGO blocks to build castles and spaceships, we use PyTorch to build smart computer programs! 🏗️
                   </p>
                   <div className="grid md:grid-cols-2 gap-4">
@@ -197,63 +210,16 @@ export function LessonDetail({ lesson, onBack, onComplete, isCompleted }: Lesson
           <div className="space-y-6">
             <Card className="bg-gradient-to-br from-pink/5 to-coral/5 border-pink/20">
               <CardContent className="pt-6">
-                <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-pink to-coral bg-clip-text text-transparent">
-                  Tensor Magic: Operations! ✨
+                <h3 className="text-2xl font-bold mb-4 text-center bg-gradient-to-r from-pink to-coral bg-clip-text text-transparent">
+                  Tensor Magic: Interactive Operations! ✨
                 </h3>
-                <div className="prose prose-lg max-w-none space-y-4">
-                  <p className="text-lg">
-                    Tensors can do <strong>magical transformations</strong>! Let's learn the most important operations:
-                  </p>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="bg-card p-5 rounded-xl border-2 border-pink/20">
-                      <div className="text-3xl mb-2">➕</div>
-                      <h4 className="font-bold text-lg text-pink mb-2">Addition</h4>
-                      <div className="bg-muted/50 p-3 rounded-lg font-mono text-xs mb-2">
-                        [1, 2, 3] + [4, 5, 6]<br/>
-                        = [5, 7, 9]
-                      </div>
-                      <p className="text-xs">Add numbers in the same position!</p>
-                    </div>
-
-                    <div className="bg-card p-5 rounded-xl border-2 border-coral/20">
-                      <div className="text-3xl mb-2">✖️</div>
-                      <h4 className="font-bold text-lg text-coral mb-2">Multiplication</h4>
-                      <div className="bg-muted/50 p-3 rounded-lg font-mono text-xs mb-2">
-                        [1, 2, 3] * 2<br/>
-                        = [2, 4, 6]
-                      </div>
-                      <p className="text-xs">Multiply every number by the same value!</p>
-                    </div>
-
-                    <div className="bg-card p-5 rounded-xl border-2 border-cyan/20">
-                      <div className="text-3xl mb-2">🔄</div>
-                      <h4 className="font-bold text-lg text-cyan mb-2">Reshape</h4>
-                      <div className="bg-muted/50 p-3 rounded-lg font-mono text-xs mb-2">
-                        [1,2,3,4,5,6] → [[1,2,3],[4,5,6]]
-                      </div>
-                      <p className="text-xs">Change the shape without changing the numbers!</p>
-                    </div>
-
-                    <div className="bg-card p-5 rounded-xl border-2 border-lime/20">
-                      <div className="text-3xl mb-2">🔗</div>
-                      <h4 className="font-bold text-lg text-lime mb-2">Concatenate</h4>
-                      <div className="bg-muted/50 p-3 rounded-lg font-mono text-xs mb-2">
-                        [1,2] + [3,4]<br/>
-                        = [1,2,3,4]
-                      </div>
-                      <p className="text-xs">Join tensors together end-to-end!</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-gradient-to-r from-violet/10 to-primary/10 p-6 rounded-xl border-2 border-violet/30">
-                    <h4 className="font-bold text-lg mb-3">🎯 Why These Operations Matter:</h4>
-                    <p className="text-sm">
-                      In neural networks, we use these operations millions of times! Each operation transforms the data a little bit, helping the AI learn patterns and make predictions. It's like a recipe where each step brings you closer to the final dish! 👨‍🍳
-                    </p>
-                  </div>
-                </div>
+                <p className="text-center text-muted-foreground mb-6">
+                  Click the buttons below to watch tensors transform! Each operation shows you how data changes.
+                </p>
               </CardContent>
             </Card>
+            
+            <TensorOperationVisual />
           </div>
         )
       
@@ -287,51 +253,16 @@ export function LessonDetail({ lesson, onBack, onComplete, isCompleted }: Lesson
           <div className="space-y-6">
             <Card className="bg-gradient-to-br from-coral/5 to-orange/5 border-coral/20">
               <CardContent className="pt-6">
-                <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-coral to-orange bg-clip-text text-transparent">
+                <h3 className="text-2xl font-bold mb-4 text-center bg-gradient-to-r from-coral to-orange bg-clip-text text-transparent">
                   Understanding Neural Network Layers 🏗️
                 </h3>
-                <div className="prose prose-lg max-w-none space-y-4">
-                  <p className="text-lg">
-                    Think of layers like floors in a building! Information flows from the ground floor up to the top, getting smarter at each level. 🏢
-                  </p>
-                  
-                  <div className="space-y-4">
-                    <div className="bg-gradient-to-r from-cyan/10 to-cyan/5 p-6 rounded-xl border-l-4 border-cyan">
-                      <h4 className="font-bold text-xl text-cyan mb-3">🚪 Input Layer (Ground Floor)</h4>
-                      <p className="text-base mb-2">This is where your data enters! Like walking into a building.</p>
-                      <div className="bg-card p-4 rounded-lg text-sm">
-                        <strong>Example:</strong> An image enters here. Each pixel becomes a number that the network can understand!
-                      </div>
-                    </div>
-
-                    <div className="bg-gradient-to-r from-pink/10 to-pink/5 p-6 rounded-xl border-l-4 border-pink">
-                      <h4 className="font-bold text-xl text-pink mb-3">🔬 Hidden Layers (Middle Floors)</h4>
-                      <p className="text-base mb-2">This is where the magic happens! Each layer looks for different patterns.</p>
-                      <div className="bg-card p-4 rounded-lg text-sm space-y-2">
-                        <p><strong>Layer 1:</strong> Finds simple edges and lines</p>
-                        <p><strong>Layer 2:</strong> Combines edges to find shapes</p>
-                        <p><strong>Layer 3:</strong> Combines shapes to recognize objects!</p>
-                      </div>
-                    </div>
-
-                    <div className="bg-gradient-to-r from-lime/10 to-lime/5 p-6 rounded-xl border-l-4 border-lime">
-                      <h4 className="font-bold text-xl text-lime mb-3">🎯 Output Layer (Top Floor)</h4>
-                      <p className="text-base mb-2">The final answer comes out here!</p>
-                      <div className="bg-card p-4 rounded-lg text-sm">
-                        <strong>Example:</strong> "This is a cat!" or "This is a dog!" - the network makes its final decision here.
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-gradient-to-r from-violet/10 to-primary/10 p-6 rounded-xl border-2 border-violet/30">
-                    <h4 className="font-bold text-lg mb-2">💡 Cool Insight:</h4>
-                    <p className="text-sm">
-                      More layers = More intelligence! But also = More training time. It's all about finding the right balance! Deep networks (lots of layers) can learn really complex patterns, which is why they're called "Deep Learning"! 🧠✨
-                    </p>
-                  </div>
-                </div>
+                <p className="text-center text-muted-foreground mb-6">
+                  Watch data flow through the layers - from input to output!
+                </p>
               </CardContent>
             </Card>
+            
+            <LayersFlowVisual />
             <NeuralNetworkVisualizer />
           </div>
         )
@@ -341,70 +272,16 @@ export function LessonDetail({ lesson, onBack, onComplete, isCompleted }: Lesson
           <div className="space-y-6">
             <Card className="bg-gradient-to-br from-violet/5 to-primary/5 border-violet/20">
               <CardContent className="pt-6">
-                <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-violet to-primary bg-clip-text text-transparent">
+                <h3 className="text-2xl font-bold mb-4 text-center bg-gradient-to-r from-violet to-primary bg-clip-text text-transparent">
                   Activation Functions: The Decision Makers! 🎮
                 </h3>
-                <div className="prose prose-lg max-w-none space-y-4">
-                  <p className="text-lg">
-                    <strong>Activation functions</strong> help neurons decide: "Should I get excited and pass this information forward?" Think of them like traffic lights! 🚦
-                  </p>
-
-                  <div className="space-y-4">
-                    <div className="bg-card p-6 rounded-xl border-2 border-lime/30">
-                      <h4 className="font-bold text-xl text-lime mb-3 flex items-center gap-2">
-                        <span>⚡</span> ReLU (Most Popular!)
-                      </h4>
-                      <p className="text-base mb-3">ReLU says: "If it's positive, pass it on! If it's negative, block it!"</p>
-                      <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm mb-2">
-                        Input: -5 → Output: 0 ❌<br/>
-                        Input: 3 → Output: 3 ✅<br/>
-                        Input: 10 → Output: 10 ✅
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        <strong>Why it's cool:</strong> Super simple and super fast! Like a bouncer that only lets positive vibes through! 😎
-                      </p>
-                    </div>
-
-                    <div className="bg-card p-6 rounded-xl border-2 border-cyan/30">
-                      <h4 className="font-bold text-xl text-cyan mb-3 flex items-center gap-2">
-                        <span>📊</span> Sigmoid (The Squisher!)
-                      </h4>
-                      <p className="text-base mb-3">Sigmoid squishes ANY number into a range between 0 and 1!</p>
-                      <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm mb-2">
-                        Input: -100 → Output: ~0<br/>
-                        Input: 0 → Output: 0.5<br/>
-                        Input: 100 → Output: ~1
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        <strong>Why it's cool:</strong> Perfect for answers that need to be "yes or no" - like "Is this a cat?" (0 = no, 1 = yes)
-                      </p>
-                    </div>
-
-                    <div className="bg-card p-6 rounded-xl border-2 border-pink/30">
-                      <h4 className="font-bold text-xl text-pink mb-3 flex items-center gap-2">
-                        <span>🌊</span> Tanh (The Balancer!)
-                      </h4>
-                      <p className="text-base mb-3">Tanh squishes numbers between -1 and 1, keeping things balanced!</p>
-                      <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm mb-2">
-                        Input: -100 → Output: ~-1<br/>
-                        Input: 0 → Output: 0<br/>
-                        Input: 100 → Output: ~1
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        <strong>Why it's cool:</strong> Great for data that can be positive OR negative, like temperature changes!
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-gradient-to-r from-orange/10 to-coral/10 p-6 rounded-xl border-2 border-orange/30">
-                    <h4 className="font-bold text-lg mb-2">🎯 The Big Picture:</h4>
-                    <p className="text-sm">
-                      Without activation functions, neural networks would just be fancy calculators! Activation functions add the "non-linearity" that lets networks learn complex patterns. They're like the secret sauce that makes AI smart! 🧠✨
-                    </p>
-                  </div>
-                </div>
+                <p className="text-center text-muted-foreground mb-6">
+                  Try different activation functions and see how they transform inputs!
+                </p>
               </CardContent>
             </Card>
+            
+            <ActivationFunctionVisual />
           </div>
         )
       
