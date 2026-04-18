@@ -41,7 +41,7 @@ export function NeuralNetworkVisualizer() {
     for (let i = 0; i < fromNodes; i++) {
       for (let j = 0; j < toNodes; j++) {
         const isActive = isAnimating && activeLayer === fromLayer
-        const connectionId = `${fromLayer}-${i}-${j}`
+        const connectionId = `conn-${fromLayer}-${toLayer}-${i}-${j}`
         
         const fromTotalHeight = fromNodes * nodeSize + (fromNodes - 1) * nodeGap
         const toTotalHeight = toNodes * nodeSize + (toNodes - 1) * nodeGap
@@ -52,77 +52,36 @@ export function NeuralNetworkVisualizer() {
         const fromY = fromStartY + i * (nodeSize + nodeGap) + nodeSize / 2
         const toY = toStartY + j * (nodeSize + nodeGap) + nodeSize / 2
         
-        const x1 = 0
+        const x1 = nodeSize / 2
         const y1 = fromY
-        const x2 = svgWidth
+        const x2 = svgWidth - nodeSize / 2
         const y2 = toY
         
         connections.push(
-          <g key={connectionId}>
-            <defs>
-              <linearGradient id={`gradient-${connectionId}`} x1={x1} y1={y1} x2={x2} y2={y2} gradientUnits="userSpaceOnUse">
-                <motion.stop
-                  offset="0%"
-                  stopColor={layers[fromLayer].color}
-                  stopOpacity={isActive ? 0.6 : 0.1}
-                  animate={isActive ? {
-                    stopOpacity: [0.1, 0.8, 0.1]
-                  } : {}}
-                  transition={{
-                    duration: 1,
-                    repeat: Infinity,
-                    delay: (i * 0.1 + j * 0.05)
-                  }}
-                />
-                <motion.stop
-                  offset="50%"
-                  stopColor={layers[toLayer].color}
-                  stopOpacity={isActive ? 0.8 : 0.1}
-                  animate={isActive ? {
-                    stopOpacity: [0.1, 1, 0.1],
-                    offset: ['20%', '80%', '20%']
-                  } : {}}
-                  transition={{
-                    duration: 1,
-                    repeat: Infinity,
-                    delay: (i * 0.1 + j * 0.05)
-                  }}
-                />
-                <motion.stop
-                  offset="100%"
-                  stopColor={layers[toLayer].color}
-                  stopOpacity={isActive ? 0.6 : 0.1}
-                  animate={isActive ? {
-                    stopOpacity: [0.1, 0.8, 0.1]
-                  } : {}}
-                  transition={{
-                    duration: 1,
-                    repeat: Infinity,
-                    delay: (i * 0.1 + j * 0.05)
-                  }}
-                />
-              </linearGradient>
-              
-              <filter id={`glow-${connectionId}`}>
-                <feGaussianBlur stdDeviation={isActive ? "3" : "1"} result="coloredBlur"/>
-                <feMerge>
-                  <feMergeNode in="coloredBlur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-            </defs>
-            
-            <motion.line
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke={`url(#gradient-${connectionId})`}
-              strokeWidth={isActive ? 3 : 1.5}
-              filter={`url(#glow-${connectionId})`}
-              strokeLinecap="round"
-            />
-          </g>
+          <motion.line
+            key={connectionId}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={layers[fromLayer].color}
+            strokeWidth={isActive ? 2.5 : 1.2}
+            strokeLinecap="round"
+            opacity={isActive ? 0.8 : 0.2}
+            animate={isActive ? {
+              strokeWidth: [1.2, 3.5, 1.2],
+              opacity: [0.3, 1, 0.3]
+            } : {}}
+            transition={{
+              duration: 0.8,
+              repeat: Infinity,
+              delay: (i * 0.08 + j * 0.04),
+              ease: "easeInOut"
+            }}
+            style={{
+              filter: isActive ? 'drop-shadow(0 0 4px currentColor)' : 'none'
+            }}
+          />
         )
       }
     }
