@@ -30,19 +30,37 @@ export function TensorVisualizer({ title, description }: TensorVisualizerProps) 
     }
   }
 
+  const getColorForIndex = (index: number) => {
+    const colors = [
+      { bg: 'bg-pink', text: 'text-pink-foreground', gradient: 'from-pink to-coral' },
+      { bg: 'bg-violet', text: 'text-violet-foreground', gradient: 'from-violet to-primary' },
+      { bg: 'bg-cyan', text: 'text-cyan-foreground', gradient: 'from-cyan to-secondary' },
+      { bg: 'bg-lime', text: 'text-lime-foreground', gradient: 'from-lime to-accent' },
+      { bg: 'bg-orange', text: 'text-orange-foreground', gradient: 'from-orange to-coral' },
+      { bg: 'bg-primary', text: 'text-primary-foreground', gradient: 'from-primary to-violet' },
+    ]
+    return colors[index % colors.length]
+  }
+
   const render1D = () => (
     <div className="flex gap-2 flex-wrap justify-center">
-      {values.map((val, i) => (
-        <motion.div
-          key={i}
-          initial={{ scale: 0, rotate: -180 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ delay: i * 0.05, type: 'spring' }}
-          className="w-14 h-14 bg-secondary text-secondary-foreground rounded-lg flex items-center justify-center font-bold text-lg"
-        >
-          {val}
-        </motion.div>
-      ))}
+      {values.map((val, i) => {
+        const color = getColorForIndex(i)
+        return (
+          <motion.div
+            key={i}
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ delay: i * 0.05, type: 'spring' }}
+            className={`w-14 h-14 rounded-lg flex items-center justify-center font-bold text-lg bg-gradient-to-br ${color.gradient} text-white shadow-lg`}
+            style={{
+              boxShadow: `0 4px 12px rgba(0,0,0,0.15), 0 0 8px oklch(0.70 0.28 ${340 + i * 50} / 0.3)`
+            }}
+          >
+            {val}
+          </motion.div>
+        )
+      })}
     </div>
   )
 
@@ -55,13 +73,17 @@ export function TensorVisualizer({ title, description }: TensorVisualizerProps) 
           <div key={rowIdx} className="flex gap-2 justify-center">
             {Array.from({ length: cols }, (_, colIdx) => {
               const idx = rowIdx * cols + colIdx
+              const color = getColorForIndex(idx)
               return (
                 <motion.div
                   key={colIdx}
                   initial={{ scale: 0, y: -20 }}
                   animate={{ scale: 1, y: 0 }}
                   transition={{ delay: idx * 0.03, type: 'spring' }}
-                  className="w-14 h-14 bg-primary text-primary-foreground rounded-lg flex items-center justify-center font-bold text-lg"
+                  className={`w-14 h-14 rounded-lg flex items-center justify-center font-bold text-lg bg-gradient-to-br ${color.gradient} text-white shadow-lg`}
+                  style={{
+                    boxShadow: `0 4px 12px rgba(0,0,0,0.15), 0 0 8px oklch(0.70 0.28 ${340 + idx * 40} / 0.3)`
+                  }}
                 >
                   {values[idx] || 0}
                 </motion.div>
@@ -95,10 +117,14 @@ export function TensorVisualizer({ title, description }: TensorVisualizerProps) 
               <div key={rowIdx} className="flex gap-2">
                 {Array.from({ length: cols }, (_, colIdx) => {
                   const idx = depthIdx * rows * cols + rowIdx * cols + colIdx
+                  const color = getColorForIndex(idx)
                   return (
                     <div
                       key={colIdx}
-                      className="w-12 h-12 bg-coral text-coral-foreground rounded-lg flex items-center justify-center font-bold text-sm"
+                      className={`w-12 h-12 rounded-lg flex items-center justify-center font-bold text-sm bg-gradient-to-br ${color.gradient} text-white shadow-lg`}
+                      style={{
+                        boxShadow: `0 4px 12px rgba(0,0,0,0.15), 0 0 8px oklch(0.70 0.28 ${340 + idx * 30} / 0.3)`
+                      }}
                     >
                       {values[idx] || 0}
                     </div>

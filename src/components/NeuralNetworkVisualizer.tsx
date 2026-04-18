@@ -15,30 +15,30 @@ export function NeuralNetworkVisualizer() {
     { 
       name: 'Input', 
       nodes: 3, 
-      color: 'oklch(0.65 0.25 330)', 
-      glowColor: 'rgba(255, 50, 150, 0.9)',
-      gradient: 'linear-gradient(135deg, oklch(0.65 0.25 330), oklch(0.75 0.22 350))'
+      color: 'oklch(0.70 0.28 340)', 
+      glowColor: 'rgba(255, 40, 160, 1)',
+      gradient: 'linear-gradient(135deg, oklch(0.70 0.28 340), oklch(0.80 0.24 350))'
     },
     { 
       name: 'Hidden 1', 
       nodes: 5, 
-      color: 'oklch(0.60 0.25 270)', 
-      glowColor: 'rgba(150, 80, 255, 0.9)',
-      gradient: 'linear-gradient(135deg, oklch(0.60 0.25 270), oklch(0.70 0.22 290))'
+      color: 'oklch(0.62 0.28 300)', 
+      glowColor: 'rgba(160, 70, 255, 1)',
+      gradient: 'linear-gradient(135deg, oklch(0.62 0.28 300), oklch(0.72 0.24 280))'
     },
     { 
       name: 'Hidden 2', 
       nodes: 4, 
-      color: 'oklch(0.65 0.25 200)', 
-      glowColor: 'rgba(0, 180, 255, 0.9)',
-      gradient: 'linear-gradient(135deg, oklch(0.65 0.25 200), oklch(0.75 0.22 180))'
+      color: 'oklch(0.72 0.26 200)', 
+      glowColor: 'rgba(0, 200, 255, 1)',
+      gradient: 'linear-gradient(135deg, oklch(0.72 0.26 200), oklch(0.82 0.22 180))'
     },
     { 
       name: 'Output', 
       nodes: 2, 
-      color: 'oklch(0.70 0.25 140)', 
-      glowColor: 'rgba(100, 255, 150, 0.9)',
-      gradient: 'linear-gradient(135deg, oklch(0.70 0.25 140), oklch(0.80 0.22 120))'
+      color: 'oklch(0.78 0.26 130)', 
+      glowColor: 'rgba(100, 255, 120, 1)',
+      gradient: 'linear-gradient(135deg, oklch(0.78 0.26 130), oklch(0.85 0.24 110))'
     },
   ]
 
@@ -240,7 +240,16 @@ export function NeuralNetworkVisualizer() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="relative bg-gradient-to-br from-muted/30 to-muted/10 p-8 rounded-xl min-h-[400px] overflow-x-auto" style={{
-          background: 'linear-gradient(135deg, rgba(255,50,150,0.05) 0%, rgba(150,80,255,0.05) 25%, rgba(0,180,255,0.05) 50%, rgba(100,255,150,0.05) 75%, rgba(255,50,150,0.05) 100%)'
+          background: `
+            radial-gradient(circle at 10% 20%, rgba(255, 40, 160, 0.08) 0%, transparent 25%),
+            radial-gradient(circle at 90% 25%, rgba(160, 70, 255, 0.08) 0%, transparent 25%),
+            radial-gradient(circle at 25% 70%, rgba(0, 200, 255, 0.08) 0%, transparent 25%),
+            radial-gradient(circle at 75% 75%, rgba(100, 255, 120, 0.08) 0%, transparent 25%),
+            radial-gradient(circle at 50% 50%, rgba(255, 180, 0, 0.06) 0%, transparent 30%),
+            repeating-linear-gradient(45deg, transparent, transparent 60px, rgba(255, 40, 160, 0.02) 60px, rgba(255, 40, 160, 0.02) 120px),
+            repeating-linear-gradient(-45deg, transparent, transparent 60px, rgba(0, 200, 255, 0.02) 60px, rgba(0, 200, 255, 0.02) 120px),
+            linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(250,250,255,0.95) 100%)
+          `
         }}>
           <div className="flex items-center justify-between gap-12 min-w-[900px]">
             {layers.map((layer, layerIdx) => {

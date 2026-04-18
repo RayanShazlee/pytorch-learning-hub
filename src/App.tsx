@@ -63,12 +63,24 @@ function App() {
       <Toaster />
       <div className="min-h-screen relative overflow-hidden">
         <div 
-          className="absolute inset-0 opacity-50"
+          className="absolute inset-0 opacity-40"
           style={{
             backgroundImage: `
-              radial-gradient(circle at 20% 20%, oklch(0.45 0.15 290 / 0.1) 0%, transparent 50%),
-              radial-gradient(circle at 80% 80%, oklch(0.70 0.12 210 / 0.1) 0%, transparent 50%),
-              radial-gradient(circle at 40% 60%, oklch(0.72 0.14 25 / 0.08) 0%, transparent 50%)
+              radial-gradient(circle at 15% 25%, oklch(0.70 0.22 340 / 0.15) 0%, transparent 40%),
+              radial-gradient(circle at 85% 20%, oklch(0.60 0.20 220 / 0.15) 0%, transparent 40%),
+              radial-gradient(circle at 25% 75%, oklch(0.72 0.18 200 / 0.12) 0%, transparent 40%),
+              radial-gradient(circle at 70% 65%, oklch(0.78 0.20 130 / 0.12) 0%, transparent 40%),
+              radial-gradient(circle at 50% 50%, oklch(0.62 0.24 300 / 0.10) 0%, transparent 50%),
+              radial-gradient(circle at 90% 85%, oklch(0.70 0.20 40 / 0.12) 0%, transparent 35%)
+            `
+          }}
+        />
+        <div 
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: `
+              repeating-linear-gradient(45deg, transparent, transparent 80px, oklch(0.55 0.22 280 / 0.03) 80px, oklch(0.55 0.22 280 / 0.03) 160px),
+              repeating-linear-gradient(-45deg, transparent, transparent 80px, oklch(0.70 0.22 340 / 0.03) 80px, oklch(0.70 0.22 340 / 0.03) 160px)
             `
           }}
         />
@@ -90,10 +102,13 @@ function App() {
                   repeat: Infinity,
                   repeatDelay: 3
                 }}
+                style={{
+                  filter: 'drop-shadow(0 0 12px oklch(0.62 0.28 300 / 0.6))'
+                }}
               >
-                <Brain size={48} weight="duotone" className="text-primary" />
+                <Brain size={48} weight="duotone" className="text-violet" />
               </motion.div>
-              <h1 className="text-5xl md:text-6xl font-bold">
+              <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-pink via-violet via-cyan to-lime bg-clip-text text-transparent">
                 PyTorch for Kids
               </h1>
               <motion.div
@@ -105,6 +120,9 @@ function App() {
                   duration: 2,
                   repeat: Infinity,
                   repeatDelay: 3
+                }}
+                style={{
+                  filter: 'drop-shadow(0 0 12px oklch(0.75 0.18 50 / 0.6))'
                 }}
               >
                 <Sparkle size={36} weight="fill" className="text-accent" />
@@ -121,15 +139,28 @@ function App() {
             transition={{ delay: 0.2 }}
             className="mb-8"
           >
-            <div className="bg-card rounded-2xl p-6 shadow-lg border">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-card rounded-2xl p-6 shadow-lg border relative overflow-hidden">
+              <div 
+                className="absolute inset-0 opacity-30 pointer-events-none"
+                style={{
+                  backgroundImage: `
+                    linear-gradient(90deg, 
+                      oklch(0.70 0.28 340 / 0.15) 0%, 
+                      oklch(0.62 0.28 300 / 0.15) 25%, 
+                      oklch(0.72 0.26 200 / 0.15) 50%, 
+                      oklch(0.78 0.26 130 / 0.15) 75%,
+                      oklch(0.70 0.28 340 / 0.15) 100%)
+                  `
+                }}
+              />
+              <div className="flex items-center justify-between mb-3 relative z-10">
                 <div className="flex items-center gap-3">
                   <span className="font-semibold">Your Progress</span>
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="bg-gradient-to-r from-pink/20 to-violet/20 border-pink/30">
                     {completedLessons?.length || 0} / {lessons.length} Lessons
                   </Badge>
                 </div>
-                <span className="text-2xl font-bold text-primary">
+                <span className="text-2xl font-bold bg-gradient-to-r from-pink via-violet to-cyan bg-clip-text text-transparent">
                   {Math.round(progressPercentage)}%
                 </span>
               </div>

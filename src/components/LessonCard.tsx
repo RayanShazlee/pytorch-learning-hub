@@ -64,8 +64,17 @@ export function LessonCard({ lesson, status, onClick }: LessonCardProps) {
         <div 
           className={cn(
             "absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-20 -z-10",
+            lesson.category === 'fundamentals' && 'bg-violet',
+            lesson.category === 'tensors' && 'bg-cyan',
+            lesson.category === 'neural-networks' && 'bg-pink',
+            lesson.category === 'training' && 'bg-lime'
+          )}
+        />
+        <div 
+          className={cn(
+            "absolute bottom-0 left-0 w-24 h-24 rounded-full blur-2xl opacity-15 -z-10",
             lesson.category === 'fundamentals' && 'bg-primary',
-            lesson.category === 'tensors' && 'bg-secondary',
+            lesson.category === 'tensors' && 'bg-orange',
             lesson.category === 'neural-networks' && 'bg-coral',
             lesson.category === 'training' && 'bg-accent'
           )}
@@ -75,12 +84,15 @@ export function LessonCard({ lesson, status, onClick }: LessonCardProps) {
           <div className="flex items-start justify-between">
             <div 
               className={cn(
-                "p-3 rounded-xl w-fit",
-                lesson.category === 'fundamentals' && 'bg-primary/10 text-primary',
-                lesson.category === 'tensors' && 'bg-secondary/10 text-secondary',
-                lesson.category === 'neural-networks' && 'bg-coral/10 text-coral',
-                lesson.category === 'training' && 'bg-accent/10 text-accent-foreground'
+                "p-3 rounded-xl w-fit transition-all duration-300",
+                lesson.category === 'fundamentals' && 'bg-gradient-to-br from-violet/20 to-primary/20 text-violet',
+                lesson.category === 'tensors' && 'bg-gradient-to-br from-cyan/20 to-secondary/20 text-cyan',
+                lesson.category === 'neural-networks' && 'bg-gradient-to-br from-pink/20 to-coral/20 text-pink',
+                lesson.category === 'training' && 'bg-gradient-to-br from-lime/20 to-accent/20 text-lime'
               )}
+              style={{
+                boxShadow: isCompleted ? 'inset 0 0 20px rgba(255,255,255,0.2)' : 'none'
+              }}
             >
               {isLocked ? (
                 <Lock size={28} weight="duotone" />
