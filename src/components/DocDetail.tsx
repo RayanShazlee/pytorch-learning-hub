@@ -9,6 +9,9 @@ import type { DocTopic } from '@/lib/docs'
 import { TensorVisualizer } from '@/components/TensorVisualizer'
 import { NeuralNetworkVisualizer } from '@/components/NeuralNetworkVisualizer'
 import { TrainingSimulator } from '@/components/TrainingSimulator'
+import { GANVisualizer } from '@/components/visuals/GANVisualizer'
+import { RLVisualizer } from '@/components/visuals/RLVisualizer'
+import { CVVisualizer } from '@/components/visuals/CVVisualizer'
 import { cn } from '@/lib/utils'
 
 interface DocDetailProps {
@@ -35,6 +38,23 @@ export function DocDetail({ topic, onBack, onComplete, isCompleted }: DocDetailP
       case 'training-loop':
       case 'optimizers':
         return <TrainingSimulator />
+      case 'gan-basics':
+      case 'dcgan':
+      case 'stylegan':
+      case 'wgan':
+      case 'diffusion-models':
+        return <GANVisualizer />
+      case 'rl-basics':
+      case 'dqn':
+      case 'policy-gradient':
+      case 'ppo-trpo':
+      case 'model-based-rl':
+        return <RLVisualizer />
+      case 'cv-fundamentals':
+      case 'object-detection':
+      case 'image-segmentation':
+      case 'pose-estimation':
+        return <CVVisualizer />
       default:
         return (
           <div className="flex items-center justify-center h-64 text-muted-foreground">
@@ -240,7 +260,24 @@ function getTopicOverview(topicId: string): string {
     'training-loop': 'The training loop is the core process of training neural networks. It involves forward passes, loss computation, backpropagation, and parameter updates. Implementing robust training loops with proper validation, checkpointing, and monitoring is essential for successful model development.',
     'custom-autograd': 'Custom autograd functions allow you to define operations with custom forward and backward passes. This is useful when you need to implement operations not provided by PyTorch, optimize performance, or control gradient flow in specific ways.',
     'distributed-training': 'Distributed training allows you to train models across multiple GPUs or machines, dramatically reducing training time for large models. Understanding data parallelism, model parallelism, and distributed communication patterns is crucial for scaling deep learning.',
-    'model-optimization': 'Model optimization techniques like quantization and pruning reduce model size and improve inference speed. Deploying models to production often requires converting them to formats like ONNX. These techniques are essential for bringing models from research to production.'
+    'model-optimization': 'Model optimization techniques like quantization and pruning reduce model size and improve inference speed. Deploying models to production often requires converting them to formats like ONNX. These techniques are essential for bringing models from research to production.',
+    'cv-fundamentals': 'Computer vision fundamentals cover image preprocessing, data augmentation, and building efficient CV pipelines. These techniques are essential for preparing image data and improving model generalization in visual tasks.',
+    'object-detection': 'Object detection identifies and localizes multiple objects in images. Modern architectures like YOLO, R-CNN, and Faster R-CNN achieve real-time performance by cleverly balancing speed and accuracy through innovative region proposal and classification strategies.',
+    'image-segmentation': 'Image segmentation partitions images into meaningful regions at the pixel level. Architectures like U-Net and Mask R-CNN excel at semantic segmentation (classifying each pixel) and instance segmentation (separating individual object instances).',
+    'pose-estimation': 'Pose estimation detects and tracks human body keypoints in images and videos. This technology powers applications from AR filters to sports analytics, using specialized architectures that learn to predict joint locations with high precision.',
+    'gan-basics': 'Generative Adversarial Networks consist of two neural networks - a generator and discriminator - that compete in a minimax game. The generator creates fake samples while the discriminator learns to distinguish real from fake, resulting in increasingly realistic generated content.',
+    'dcgan': 'Deep Convolutional GANs introduced architectural guidelines that stabilize GAN training using convolutional layers. DCGANs demonstrated that GANs can learn hierarchical representations and enabled high-quality image generation across various domains.',
+    'stylegan': 'StyleGAN represents the cutting edge of image generation, introducing style-based generation and progressive growing. It enables unprecedented control over generated images through latent space manipulation and produces photorealistic results.',
+    'wgan': 'Wasserstein GANs use the Earth Mover distance instead of Jensen-Shannon divergence, providing more stable training and meaningful loss metrics. WGAN-GP adds gradient penalty for further improved training dynamics.',
+    'diffusion-models': 'Diffusion models generate data by learning to reverse a gradual noising process. They achieve state-of-the-art generation quality and have become foundational to modern AI art and image generation systems.',
+    'rl-basics': 'Reinforcement Learning trains agents to make sequential decisions by maximizing cumulative rewards. Key concepts include Markov Decision Processes, value functions, policies, and the exploration-exploitation tradeoff.',
+    'dqn': 'Deep Q-Networks combine Q-learning with deep neural networks, using experience replay and target networks to stabilize training. DQN revolutionized RL by enabling agents to learn directly from high-dimensional sensory input.',
+    'policy-gradient': 'Policy gradient methods directly optimize the policy by following the gradient of expected rewards. Algorithms like REINFORCE and actor-critic methods form the foundation of modern RL approaches.',
+    'ppo-trpo': 'Proximal Policy Optimization and Trust Region Policy Optimization constrain policy updates to improve training stability. These algorithms achieve strong performance across diverse tasks while remaining relatively simple to implement.',
+    'model-based-rl': 'Model-based RL learns a model of the environment dynamics, enabling planning and sample-efficient learning. By simulating trajectories in learned models, agents can explore more efficiently than model-free methods.',
+    'word-embeddings': 'Word embeddings represent words as dense vectors that capture semantic relationships. Techniques like Word2Vec and GloVe learn embeddings where similar words have similar vectors, enabling powerful language understanding.',
+    'seq2seq': 'Sequence-to-sequence models map input sequences to output sequences of potentially different lengths. With attention mechanisms, they excel at tasks like machine translation, summarization, and conversational AI.',
+    'bert-transformers': 'BERT and modern transformer models use bidirectional self-attention and pre-training on massive datasets. Fine-tuning these models on downstream tasks achieves state-of-the-art results across NLP with minimal task-specific architecture.',
   }
   return overviews[topicId] || 'Comprehensive guide to this PyTorch topic.'
 }

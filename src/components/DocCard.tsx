@@ -24,7 +24,11 @@ const categoryGradients = {
   autograd: 'from-coral/10 via-coral/5 to-transparent',
   nn: 'from-violet/10 via-violet/5 to-transparent',
   optimization: 'from-cyan/10 via-cyan/5 to-transparent',
-  advanced: 'from-orange/10 via-orange/5 to-transparent',
+  cv: 'from-lime/10 via-lime/5 to-transparent',
+  gan: 'from-pink/10 via-pink/5 to-transparent',
+  rl: 'from-orange/10 via-orange/5 to-transparent',
+  nlp: 'from-violet/10 via-violet/5 to-transparent',
+  advanced: 'from-coral/10 via-coral/5 to-transparent',
 }
 
 export function DocCard({ topic, onClick, isCompleted }: DocCardProps) {
