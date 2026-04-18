@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,6 +14,12 @@ export function NeuralNetworkVisualizer() {
     { name: 'Hidden 2', nodes: 4, color: 'oklch(0.72 0.14 25)', glowColor: 'rgba(255, 140, 105, 0.8)' },
     { name: 'Output', nodes: 2, color: 'oklch(0.85 0.15 95)', glowColor: 'rgba(255, 230, 110, 0.8)' },
   ]
+
+  const nodeActivations = useMemo(() => {
+    return layers.map((layer) => 
+      Array.from({ length: layer.nodes }, () => Math.random() * 0.6 + 0.4)
+    )
+  }, [layers.length])
 
   useEffect(() => {
     if (!isAnimating) return
@@ -131,6 +137,12 @@ export function NeuralNetworkVisualizer() {
                     <div className="flex flex-col gap-3">
                       {Array.from({ length: layer.nodes }, (_, nodeIdx) => {
                         const isNodeActive = isAnimating && activeLayer === layerIdx
+                        const activation = nodeActivations[layerIdx][nodeIdx]
+                        const pulseIntensity = activation
+                        const glowSize = 20 + (activation * 20)
+                        const scaleMax = 1 + (activation * 0.25)
+                        const rippleScale = 1.5 + (activation * 0.8)
+                        
                         return (
                           <motion.div
                             key={nodeIdx}
@@ -142,44 +154,85 @@ export function NeuralNetworkVisualizer() {
                                 backgroundColor: layer.color,
                               }}
                               animate={isNodeActive ? {
-                                scale: [1, 1.15, 1],
+                                scale: [1, scaleMax, 1],
                                 boxShadow: [
                                   `0 0 0px ${layer.glowColor}`,
-                                  `0 0 30px ${layer.glowColor}, 0 0 15px ${layer.glowColor}`,
+                                  `0 0 ${glowSize}px ${layer.glowColor}, 0 0 ${glowSize / 2}px ${layer.glowColor}`,
                                   `0 0 0px ${layer.glowColor}`,
                                 ],
+                                opacity: [0.7 + (activation * 0.3), 1, 0.7 + (activation * 0.3)],
                               } : {
                                 scale: 1,
                                 boxShadow: `0 0 0px ${layer.glowColor}`,
+                                opacity: 0.7,
                               }}
                               transition={{
-                                duration: 1,
+                                duration: 0.8 + (activation * 0.4),
                                 repeat: isNodeActive ? Infinity : 0,
                                 delay: nodeIdx * 0.08,
                                 ease: "easeInOut"
                               }}
                             >
-                              {nodeIdx + 1}
-                            </motion.div>
-                            
-                            {isNodeActive && (
+                              <span className="relative z-10">{nodeIdx + 1}</span>
                               <motion.div
                                 className="absolute inset-0 rounded-full"
                                 style={{
-                                  backgroundColor: layer.color,
+                                  background: `radial-gradient(circle, rgba(255,255,255,${activation * 0.3}) 0%, transparent 70%)`,
                                 }}
-                                initial={{ scale: 1, opacity: 0.6 }}
-                                animate={{
-                                  scale: [1, 1.8, 2.2],
-                                  opacity: [0.6, 0.3, 0],
+                                animate={isNodeActive ? {
+                                  scale: [1, 1.2, 1],
+                                  opacity: [pulseIntensity * 0.5, pulseIntensity, pulseIntensity * 0.5],
+                                } : {
+                                  opacity: 0,
                                 }}
                                 transition={{
-                                  duration: 1,
-                                  repeat: Infinity,
+                                  duration: 0.8 + (activation * 0.4),
+                                  repeat: isNodeActive ? Infinity : 0,
                                   delay: nodeIdx * 0.08,
-                                  ease: "easeOut"
+                                  ease: "easeInOut"
                                 }}
                               />
+                            </motion.div>
+                            
+                            {isNodeActive && (
+                              <>
+                                <motion.div
+                                  className="absolute inset-0 rounded-full"
+                                  style={{
+                                    backgroundColor: layer.color,
+                                  }}
+                                  initial={{ scale: 1, opacity: 0.5 * pulseIntensity }}
+                                  animate={{
+                                    scale: [1, rippleScale, rippleScale + 0.4],
+                                    opacity: [0.5 * pulseIntensity, 0.25 * pulseIntensity, 0],
+                                  }}
+                                  transition={{
+                                    duration: 1 + (activation * 0.2),
+                                    repeat: Infinity,
+                                    delay: nodeIdx * 0.08,
+                                    ease: "easeOut"
+                                  }}
+                                />
+                                {activation > 0.7 && (
+                                  <motion.div
+                                    className="absolute inset-0 rounded-full"
+                                    style={{
+                                      backgroundColor: layer.color,
+                                    }}
+                                    initial={{ scale: 1, opacity: 0.4 }}
+                                    animate={{
+                                      scale: [1, rippleScale + 0.5, rippleScale + 1],
+                                      opacity: [0.4, 0.2, 0],
+                                    }}
+                                    transition={{
+                                      duration: 1.3,
+                                      repeat: Infinity,
+                                      delay: nodeIdx * 0.08 + 0.3,
+                                      ease: "easeOut"
+                                    }}
+                                  />
+                                )}
+                              </>
                             )}
                           </motion.div>
                         )
@@ -211,10 +264,33 @@ export function NeuralNetworkVisualizer() {
           </Button>
         </div>
 
-        <div className="text-center text-sm text-muted-foreground">
-          {isAnimating
-            ? `Light is flowing through ${layers[activeLayer].name} layer! ✨`
-            : 'Press start to see light flow through the network'}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="text-center text-sm text-muted-foreground">
+            {isAnimating
+              ? `Light is flowing through ${layers[activeLayer].name} layer! ✨`
+              : 'Press start to see light flow through the network'}
+          </div>
+          
+          <div className="bg-muted/30 rounded-lg p-4">
+            <div className="text-sm font-semibold mb-2 text-center">Neuron Activation Levels</div>
+            <div className="flex items-center justify-center gap-2 text-xs">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full bg-primary/40" />
+                <span className="text-muted-foreground">Low (40-60%)</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full bg-primary/70" />
+                <span className="text-muted-foreground">Medium (60-80%)</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-4 h-4 rounded-full bg-primary shadow-lg shadow-primary/50" />
+                <span className="text-muted-foreground">High (80-100%)</span>
+              </div>
+            </div>
+            <p className="text-xs text-center text-muted-foreground mt-2">
+              Higher activation = stronger pulse & glow
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>
