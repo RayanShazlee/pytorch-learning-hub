@@ -63,31 +63,73 @@ export function NeuralNetworkVisualizer() {
         const x2 = svgWidth
         const y2 = toY
         
+        const pathLength = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
+        const delay = i * 0.08 + j * 0.04
+        
         connections.push(
-          <motion.line
-            key={connectionId}
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            stroke={layers[fromLayer].color}
-            strokeWidth={isActive ? 2.5 : 1.2}
-            strokeLinecap="round"
-            opacity={isActive ? 0.8 : 0.2}
-            animate={isActive ? {
-              strokeWidth: [1.2, 3.5, 1.2],
-              opacity: [0.3, 1, 0.3]
-            } : {}}
-            transition={{
-              duration: 0.8,
-              repeat: Infinity,
-              delay: (i * 0.08 + j * 0.04),
-              ease: "easeInOut"
-            }}
-            style={{
-              filter: isActive ? 'drop-shadow(0 0 4px currentColor)' : 'none'
-            }}
-          />
+          <g key={connectionId}>
+            <motion.line
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke={layers[fromLayer].color}
+              strokeWidth={1}
+              strokeLinecap="round"
+              opacity={0.15}
+            />
+            
+            {isActive && (
+              <>
+                <motion.line
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke={layers[fromLayer].color}
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                  strokeDasharray={pathLength}
+                  strokeDashoffset={pathLength}
+                  animate={{
+                    strokeDashoffset: [pathLength, 0],
+                    opacity: [0, 1, 0.4]
+                  }}
+                  transition={{
+                    duration: 0.6,
+                    repeat: Infinity,
+                    delay: delay,
+                    ease: "easeOut",
+                    repeatDelay: 0.6
+                  }}
+                  style={{
+                    filter: `drop-shadow(0 0 3px ${layers[fromLayer].glowColor})`
+                  }}
+                />
+                
+                <motion.circle
+                  r={3}
+                  fill={layers[fromLayer].glowColor}
+                  animate={{
+                    cx: [x1, x2],
+                    cy: [y1, y2],
+                    opacity: [1, 1, 0],
+                    scale: [1, 1, 0.5]
+                  }}
+                  transition={{
+                    duration: 0.6,
+                    repeat: Infinity,
+                    delay: delay,
+                    ease: "easeOut",
+                    repeatDelay: 0.6
+                  }}
+                  style={{
+                    filter: `drop-shadow(0 0 4px ${layers[fromLayer].glowColor})`
+                  }}
+                />
+              </>
+            )}
+          </g>
         )
       }
     }
@@ -137,11 +179,13 @@ export function NeuralNetworkVisualizer() {
                     <div className="flex flex-col gap-3">
                       {Array.from({ length: layer.nodes }, (_, nodeIdx) => {
                         const isNodeActive = isAnimating && activeLayer === layerIdx
+                        const isNodeReceiving = isAnimating && activeLayer === layerIdx - 1
                         const activation = nodeActivations[layerIdx][nodeIdx]
                         const pulseIntensity = activation
                         const glowSize = 20 + (activation * 20)
-                        const scaleMax = 1 + (activation * 0.25)
-                        const rippleScale = 1.5 + (activation * 0.8)
+                        const scaleMax = 1 + (activation * 0.2)
+                        const rippleScale = 1.8 + (activation * 0.5)
+                        const nodeDelay = nodeIdx * 0.08
                         
                         return (
                           <motion.div
@@ -153,82 +197,95 @@ export function NeuralNetworkVisualizer() {
                               style={{
                                 backgroundColor: layer.color,
                               }}
-                              animate={isNodeActive ? {
+                              animate={(isNodeActive || isNodeReceiving) ? {
                                 scale: [1, scaleMax, 1],
                                 boxShadow: [
-                                  `0 0 0px ${layer.glowColor}`,
-                                  `0 0 ${glowSize}px ${layer.glowColor}, 0 0 ${glowSize / 2}px ${layer.glowColor}`,
-                                  `0 0 0px ${layer.glowColor}`,
+                                  `0 0 ${glowSize * 0.3}px ${layer.glowColor}`,
+                                  `0 0 ${glowSize}px ${layer.glowColor}, 0 0 ${glowSize / 2}px ${layer.glowColor}, inset 0 0 ${glowSize * 0.4}px ${layer.glowColor}`,
+                                  `0 0 ${glowSize * 0.3}px ${layer.glowColor}`,
                                 ],
-                                opacity: [0.7 + (activation * 0.3), 1, 0.7 + (activation * 0.3)],
+                                opacity: [0.8, 1, 0.8],
+                                filter: [
+                                  'brightness(1)',
+                                  `brightness(${1 + activation * 0.4})`,
+                                  'brightness(1)'
+                                ]
                               } : {
                                 scale: 1,
                                 boxShadow: `0 0 0px ${layer.glowColor}`,
-                                opacity: 0.7,
+                                opacity: 0.65,
+                                filter: 'brightness(0.9)'
                               }}
                               transition={{
-                                duration: 0.8 + (activation * 0.4),
-                                repeat: isNodeActive ? Infinity : 0,
-                                delay: nodeIdx * 0.08,
-                                ease: "easeInOut"
+                                duration: 1.2,
+                                repeat: (isNodeActive || isNodeReceiving) ? Infinity : 0,
+                                delay: isNodeReceiving ? nodeDelay + 0.6 : nodeDelay,
+                                ease: "easeInOut",
+                                repeatDelay: 0
                               }}
                             >
-                              <span className="relative z-10">{nodeIdx + 1}</span>
+                              <span className="relative z-10 drop-shadow-lg">{nodeIdx + 1}</span>
                               <motion.div
-                                className="absolute inset-0 rounded-full"
+                                className="absolute inset-0 rounded-full pointer-events-none"
                                 style={{
-                                  background: `radial-gradient(circle, rgba(255,255,255,${activation * 0.3}) 0%, transparent 70%)`,
+                                  background: `radial-gradient(circle, rgba(255,255,255,${activation * 0.6}) 0%, rgba(255,255,255,${activation * 0.2}) 50%, transparent 70%)`,
                                 }}
-                                animate={isNodeActive ? {
-                                  scale: [1, 1.2, 1],
-                                  opacity: [pulseIntensity * 0.5, pulseIntensity, pulseIntensity * 0.5],
+                                animate={(isNodeActive || isNodeReceiving) ? {
+                                  scale: [1, 1.3, 1],
+                                  opacity: [pulseIntensity * 0.6, pulseIntensity * 0.9, pulseIntensity * 0.6],
+                                  rotate: [0, 180, 360]
                                 } : {
                                   opacity: 0,
                                 }}
                                 transition={{
-                                  duration: 0.8 + (activation * 0.4),
-                                  repeat: isNodeActive ? Infinity : 0,
-                                  delay: nodeIdx * 0.08,
-                                  ease: "easeInOut"
+                                  duration: 1.2,
+                                  repeat: (isNodeActive || isNodeReceiving) ? Infinity : 0,
+                                  delay: isNodeReceiving ? nodeDelay + 0.6 : nodeDelay,
+                                  ease: "linear",
+                                  repeatDelay: 0
                                 }}
                               />
                             </motion.div>
                             
-                            {isNodeActive && (
+                            {(isNodeActive || isNodeReceiving) && (
                               <>
                                 <motion.div
-                                  className="absolute inset-0 rounded-full"
+                                  className="absolute inset-0 rounded-full pointer-events-none"
                                   style={{
                                     backgroundColor: layer.color,
+                                    opacity: 0.4 * pulseIntensity
                                   }}
-                                  initial={{ scale: 1, opacity: 0.5 * pulseIntensity }}
+                                  initial={{ scale: 1, opacity: 0.4 * pulseIntensity }}
                                   animate={{
-                                    scale: [1, rippleScale, rippleScale + 0.4],
-                                    opacity: [0.5 * pulseIntensity, 0.25 * pulseIntensity, 0],
+                                    scale: [1, rippleScale, rippleScale + 0.3],
+                                    opacity: [0.4 * pulseIntensity, 0.15 * pulseIntensity, 0],
                                   }}
                                   transition={{
-                                    duration: 1 + (activation * 0.2),
+                                    duration: 1.2,
                                     repeat: Infinity,
-                                    delay: nodeIdx * 0.08,
-                                    ease: "easeOut"
+                                    delay: isNodeReceiving ? nodeDelay + 0.6 : nodeDelay,
+                                    ease: "easeOut",
+                                    repeatDelay: 0
                                   }}
                                 />
-                                {activation > 0.7 && (
+                                {activation > 0.65 && (
                                   <motion.div
-                                    className="absolute inset-0 rounded-full"
+                                    className="absolute inset-0 rounded-full pointer-events-none"
                                     style={{
                                       backgroundColor: layer.color,
+                                      opacity: 0.35
                                     }}
-                                    initial={{ scale: 1, opacity: 0.4 }}
+                                    initial={{ scale: 1, opacity: 0.35 }}
                                     animate={{
-                                      scale: [1, rippleScale + 0.5, rippleScale + 1],
-                                      opacity: [0.4, 0.2, 0],
+                                      scale: [1, rippleScale + 0.4, rippleScale + 0.8],
+                                      opacity: [0.35, 0.15, 0],
                                     }}
                                     transition={{
-                                      duration: 1.3,
+                                      duration: 1.5,
                                       repeat: Infinity,
-                                      delay: nodeIdx * 0.08 + 0.3,
-                                      ease: "easeOut"
+                                      delay: (isNodeReceiving ? nodeDelay + 0.6 : nodeDelay) + 0.4,
+                                      ease: "easeOut",
+                                      repeatDelay: 0
                                     }}
                                   />
                                 )}
@@ -264,31 +321,38 @@ export function NeuralNetworkVisualizer() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="text-center text-sm text-muted-foreground">
-            {isAnimating
-              ? `Light is flowing through ${layers[activeLayer].name} layer! ✨`
-              : 'Press start to see light flow through the network'}
+        <div className="bg-muted/30 rounded-xl p-6 space-y-4">
+          <div className="text-center">
+            <div className="text-lg font-semibold mb-2">
+              {isAnimating
+                ? `✨ Signals flowing through ${layers[activeLayer].name} layer!`
+                : '👆 Press start to watch light travel through the network'}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {isAnimating
+                ? 'Watch the glowing particles travel along connections and light up neurons!'
+                : 'Neural networks pass information from layer to layer, just like signals traveling through wires'}
+            </p>
           </div>
           
-          <div className="bg-muted/30 rounded-lg p-4">
-            <div className="text-sm font-semibold mb-2 text-center">Neuron Activation Levels</div>
-            <div className="flex items-center justify-center gap-2 text-xs">
-              <div className="flex items-center gap-1">
+          <div className="bg-background/50 rounded-lg p-4">
+            <div className="text-sm font-semibold mb-3 text-center">Neuron Activation Intensity</div>
+            <div className="flex items-center justify-center gap-4 text-xs flex-wrap">
+              <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-primary/40" />
-                <span className="text-muted-foreground">Low (40-60%)</span>
+                <span className="text-muted-foreground">Low (40-65%)</span>
               </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full bg-primary/70" />
-                <span className="text-muted-foreground">Medium (60-80%)</span>
+              <div className="flex items-center gap-2">
+                <div className="w-3.5 h-3.5 rounded-full bg-primary/70 shadow-sm shadow-primary/30" />
+                <span className="text-muted-foreground">Medium (65-80%)</span>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded-full bg-primary shadow-lg shadow-primary/50" />
                 <span className="text-muted-foreground">High (80-100%)</span>
               </div>
             </div>
-            <p className="text-xs text-center text-muted-foreground mt-2">
-              Higher activation = stronger pulse & glow
+            <p className="text-xs text-center text-muted-foreground mt-3">
+              Higher activation = brighter glow, stronger pulse, and larger ripples! 💫
             </p>
           </div>
         </div>
