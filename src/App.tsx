@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Toaster } from '@/components/ui/sonner'
@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Brain, Sparkle } from '@phosphor-icons/react'
 import { LessonCard } from '@/components/LessonCard'
 import { LessonDetail } from '@/components/LessonDetail'
+import { Confetti } from '@/components/Confetti'
 import { lessons, categories } from '@/lib/lessons'
 import type { Lesson, LessonStatus } from '@/lib/lessons'
 
@@ -16,6 +17,8 @@ function App() {
   const [completedLessons, setCompletedLessons] = useKV<string[]>('completed-lessons', [])
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [showConfetti, setShowConfetti] = useState(false)
+  const previousProgressRef = useRef<number>(0)
 
   const getLessonStatus = (lessonId: string): LessonStatus => {
     if (completedLessons?.includes(lessonId)) {
@@ -41,10 +44,26 @@ function App() {
 
   const progressPercentage = ((completedLessons?.length || 0) / lessons.length) * 100
 
+  useEffect(() => {
+    const currentProgress = progressPercentage
+    const previousProgress = previousProgressRef.current
+
+    if (currentProgress === 100 && previousProgress < 100) {
+      setShowConfetti(true)
+      toast.success('🎉 Amazing! You completed all lessons!', {
+        description: 'You are now a PyTorch master!',
+        duration: 5000,
+      })
+    }
+
+    previousProgressRef.current = currentProgress
+  }, [progressPercentage])
+
   if (selectedLesson) {
     return (
       <>
         <Toaster />
+        <Confetti trigger={showConfetti} onComplete={() => setShowConfetti(false)} />
         <LessonDetail
           lesson={selectedLesson}
           onBack={() => setSelectedLesson(null)}
@@ -61,6 +80,7 @@ function App() {
   return (
     <>
       <Toaster />
+      <Confetti trigger={showConfetti} onComplete={() => setShowConfetti(false)} />
       <div className="min-h-screen relative overflow-hidden">
         <div 
           className="absolute inset-0 opacity-40"
