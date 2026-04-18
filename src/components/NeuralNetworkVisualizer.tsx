@@ -9,10 +9,10 @@ export function NeuralNetworkVisualizer() {
   const [activeLayer, setActiveLayer] = useState(0)
 
   const layers = [
-    { name: 'Input', nodes: 3, color: 'bg-secondary' },
-    { name: 'Hidden 1', nodes: 5, color: 'bg-primary' },
-    { name: 'Hidden 2', nodes: 4, color: 'bg-coral' },
-    { name: 'Output', nodes: 2, color: 'bg-accent' },
+    { name: 'Input', nodes: 3, color: 'oklch(0.70 0.12 210)', glowColor: 'rgba(115, 160, 255, 0.8)' },
+    { name: 'Hidden 1', nodes: 5, color: 'oklch(0.45 0.15 290)', glowColor: 'rgba(133, 107, 255, 0.8)' },
+    { name: 'Hidden 2', nodes: 4, color: 'oklch(0.72 0.14 25)', glowColor: 'rgba(255, 140, 105, 0.8)' },
+    { name: 'Output', nodes: 2, color: 'oklch(0.85 0.15 95)', glowColor: 'rgba(255, 230, 110, 0.8)' },
   ]
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export function NeuralNetworkVisualizer() {
         }
         return prev + 1
       })
-    }, 1000)
+    }, 1200)
 
     return () => clearInterval(interval)
   }, [isAnimating, layers.length])
@@ -38,24 +38,74 @@ export function NeuralNetworkVisualizer() {
     for (let i = 0; i < fromNodes; i++) {
       for (let j = 0; j < toNodes; j++) {
         const isActive = isAnimating && activeLayer === fromLayer
+        const connectionId = `${fromLayer}-${i}-${j}`
+        
         connections.push(
-          <motion.line
-            key={`${fromLayer}-${i}-${j}`}
-            x1="0"
-            y1={`${((i + 1) / (fromNodes + 1)) * 100}%`}
-            x2="100"
-            y2={`${((j + 1) / (toNodes + 1)) * 100}%`}
-            stroke={isActive ? 'oklch(0.85 0.15 95)' : 'oklch(0.88 0.02 290)'}
-            strokeWidth={isActive ? 2 : 1}
-            strokeOpacity={isActive ? 0.8 : 0.3}
-            animate={{
-              strokeOpacity: isActive ? [0.3, 0.8, 0.3] : 0.3,
-            }}
-            transition={{
-              duration: 0.8,
-              repeat: isActive ? Infinity : 0,
-            }}
-          />
+          <g key={connectionId}>
+            <defs>
+              <linearGradient id={`gradient-${connectionId}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                <motion.stop
+                  offset="0%"
+                  stopColor={layers[fromLayer].color}
+                  stopOpacity={isActive ? 0.6 : 0.1}
+                  animate={isActive ? {
+                    stopOpacity: [0.1, 0.8, 0.1]
+                  } : {}}
+                  transition={{
+                    duration: 1,
+                    repeat: Infinity,
+                    delay: (i * 0.1 + j * 0.05)
+                  }}
+                />
+                <motion.stop
+                  offset="50%"
+                  stopColor={layers[toLayer].color}
+                  stopOpacity={isActive ? 0.8 : 0.1}
+                  animate={isActive ? {
+                    stopOpacity: [0.1, 1, 0.1],
+                    offset: ['20%', '80%', '20%']
+                  } : {}}
+                  transition={{
+                    duration: 1,
+                    repeat: Infinity,
+                    delay: (i * 0.1 + j * 0.05)
+                  }}
+                />
+                <motion.stop
+                  offset="100%"
+                  stopColor={layers[toLayer].color}
+                  stopOpacity={isActive ? 0.6 : 0.1}
+                  animate={isActive ? {
+                    stopOpacity: [0.1, 0.8, 0.1]
+                  } : {}}
+                  transition={{
+                    duration: 1,
+                    repeat: Infinity,
+                    delay: (i * 0.1 + j * 0.05)
+                  }}
+                />
+              </linearGradient>
+              
+              <filter id={`glow-${connectionId}`}>
+                <feGaussianBlur stdDeviation={isActive ? "3" : "1"} result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            
+            <motion.line
+              x1="0"
+              y1={`${((i + 1) / (fromNodes + 1)) * 100}%`}
+              x2="100"
+              y2={`${((j + 1) / (toNodes + 1)) * 100}%`}
+              stroke={`url(#gradient-${connectionId})`}
+              strokeWidth={isActive ? 3 : 1.5}
+              filter={`url(#glow-${connectionId})`}
+              strokeLinecap="round"
+            />
+          </g>
         )
       }
     }
@@ -67,17 +117,17 @@ export function NeuralNetworkVisualizer() {
       <CardHeader>
         <CardTitle>Neural Network Flow</CardTitle>
         <CardDescription>
-          Watch how data flows through the layers of a neural network
+          Watch light flow through the neural network as signals pass between neurons
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="relative bg-muted/30 p-8 rounded-xl min-h-[400px] overflow-x-auto">
-          <div className="flex items-center justify-between gap-8 min-w-[800px]">
+        <div className="relative bg-gradient-to-br from-muted/30 to-muted/10 p-8 rounded-xl min-h-[400px] overflow-x-auto">
+          <div className="flex items-center justify-between gap-12 min-w-[900px]">
             {layers.map((layer, layerIdx) => (
               <div key={layerIdx} className="flex-1 relative">
                 {layerIdx > 0 && (
                   <svg
-                    className="absolute top-0 right-full w-8 h-full"
+                    className="absolute top-0 right-full w-12 h-full"
                     style={{ transform: 'translateX(50%)' }}
                   >
                     {renderConnections(layerIdx - 1, layerIdx)}
@@ -88,34 +138,62 @@ export function NeuralNetworkVisualizer() {
                   <div className="text-sm font-semibold text-center mb-2">
                     {layer.name}
                   </div>
-                  <div className="flex flex-col gap-2">
-                    {Array.from({ length: layer.nodes }, (_, nodeIdx) => (
-                      <motion.div
-                        key={nodeIdx}
-                        className={`w-12 h-12 rounded-full ${layer.color} flex items-center justify-center text-white font-bold text-sm`}
-                        animate={{
-                          scale:
-                            isAnimating && activeLayer === layerIdx
-                              ? [1, 1.2, 1]
-                              : 1,
-                          boxShadow:
-                            isAnimating && activeLayer === layerIdx
-                              ? [
-                                  '0 0 0px rgba(133, 107, 255, 0)',
-                                  '0 0 20px rgba(133, 107, 255, 0.6)',
-                                  '0 0 0px rgba(133, 107, 255, 0)',
-                                ]
-                              : '0 0 0px rgba(133, 107, 255, 0)',
-                        }}
-                        transition={{
-                          duration: 0.8,
-                          repeat: isAnimating && activeLayer === layerIdx ? Infinity : 0,
-                          delay: nodeIdx * 0.1,
-                        }}
-                      >
-                        {nodeIdx + 1}
-                      </motion.div>
-                    ))}
+                  <div className="flex flex-col gap-3">
+                    {Array.from({ length: layer.nodes }, (_, nodeIdx) => {
+                      const isNodeActive = isAnimating && activeLayer === layerIdx
+                      return (
+                        <motion.div
+                          key={nodeIdx}
+                          className="relative"
+                        >
+                          <motion.div
+                            className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-sm relative z-10"
+                            style={{
+                              backgroundColor: layer.color,
+                            }}
+                            animate={isNodeActive ? {
+                              scale: [1, 1.15, 1],
+                              boxShadow: [
+                                `0 0 0px ${layer.glowColor}`,
+                                `0 0 30px ${layer.glowColor}, 0 0 15px ${layer.glowColor}`,
+                                `0 0 0px ${layer.glowColor}`,
+                              ],
+                            } : {
+                              scale: 1,
+                              boxShadow: `0 0 0px ${layer.glowColor}`,
+                            }}
+                            transition={{
+                              duration: 1,
+                              repeat: isNodeActive ? Infinity : 0,
+                              delay: nodeIdx * 0.08,
+                              ease: "easeInOut"
+                            }}
+                          >
+                            {nodeIdx + 1}
+                          </motion.div>
+                          
+                          {isNodeActive && (
+                            <motion.div
+                              className="absolute inset-0 rounded-full"
+                              style={{
+                                backgroundColor: layer.color,
+                              }}
+                              initial={{ scale: 1, opacity: 0.6 }}
+                              animate={{
+                                scale: [1, 1.8, 2.2],
+                                opacity: [0.6, 0.3, 0],
+                              }}
+                              transition={{
+                                duration: 1,
+                                repeat: Infinity,
+                                delay: nodeIdx * 0.08,
+                                ease: "easeOut"
+                              }}
+                            />
+                          )}
+                        </motion.div>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
@@ -144,8 +222,8 @@ export function NeuralNetworkVisualizer() {
 
         <div className="text-center text-sm text-muted-foreground">
           {isAnimating
-            ? `Data is flowing through ${layers[activeLayer].name}!`
-            : 'Press start to see how data flows through the network'}
+            ? `Light is flowing through ${layers[activeLayer].name} layer! ✨`
+            : 'Press start to see light flow through the network'}
         </div>
       </CardContent>
     </Card>
