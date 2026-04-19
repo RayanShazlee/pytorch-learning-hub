@@ -216,15 +216,15 @@ export function GANVisualizer({ isPlaying = true }: GANVisualizerProps) {
   }, [isPlaying])
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full aspect-[2/1] rounded-xl overflow-hidden bg-gradient-to-br from-pink/5 via-violet/5 to-cyan/5 border border-pink/20">
       <canvas
         ref={canvasRef}
         width={600}
         height={300}
-        className="w-full h-full"
+        className="absolute inset-0 w-full h-full"
       />
       <motion.div
-        className="absolute top-4 right-4 px-4 py-2 rounded-lg bg-card border-2 border-pink/30"
+        className="absolute top-4 right-4 px-4 py-2 rounded-lg bg-card/90 backdrop-blur border-2 border-pink/30 shadow-lg"
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
       >
