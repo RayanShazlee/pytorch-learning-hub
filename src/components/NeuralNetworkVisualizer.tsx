@@ -260,28 +260,31 @@ export function NeuralNetworkVisualizer() {
               const svgWidth = 96
               
               return (
-                <div key={layerIdx} className="flex-1 relative">
-                  {layerIdx > 0 && (
-                    <svg
-                      className="absolute top-0 right-full"
-                      width={svgWidth}
-                      height={containerHeight}
-                      style={{ 
-                        transform: 'translateX(calc(50% + 28px))',
-                        overflow: 'visible'
-                      }}
-                      viewBox={`0 0 ${svgWidth} ${containerHeight}`}
-                      preserveAspectRatio="none"
-                    >
-                      {renderConnections(layerIdx - 1, layerIdx, svgWidth, containerHeight)}
-                    </svg>
-                  )}
-                  
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="text-sm font-semibold text-center mb-2">
-                      {layer.name}
-                    </div>
-                    <div className="flex flex-col gap-3">
+                <div key={layerIdx} className="flex-1 flex flex-col items-center">
+                  <div className="text-sm font-semibold text-center mb-4">
+                    {layer.name}
+                  </div>
+                  <div
+                    className="relative flex flex-col items-center justify-center"
+                    style={{ height: containerHeight }}
+                  >
+                    {layerIdx > 0 && (
+                      <svg
+                        className="absolute top-0 right-full pointer-events-none"
+                        width={svgWidth}
+                        height={containerHeight}
+                        style={{
+                          transform: 'translateX(calc(50% + 28px))',
+                          overflow: 'visible'
+                        }}
+                        viewBox={`0 0 ${svgWidth} ${containerHeight}`}
+                        preserveAspectRatio="none"
+                      >
+                        {renderConnections(layerIdx - 1, layerIdx, svgWidth, containerHeight)}
+                      </svg>
+                    )}
+
+                    <div className="flex flex-col gap-3 items-center">
                       {Array.from({ length: layer.nodes }, (_, nodeIdx) => {
                         const isNodeActive = isAnimating && activeLayer === layerIdx
                         const isNodeReceiving = isAnimating && activeLayer === layerIdx - 1

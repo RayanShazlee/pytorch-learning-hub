@@ -147,15 +147,15 @@ export function CVVisualizer({ isPlaying = true }: CVVisualizerProps) {
   }, [isPlaying])
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full aspect-[12/7] rounded-xl overflow-hidden bg-gradient-to-br from-lime/5 via-cyan/5 to-violet/5 border border-lime/20">
       <canvas
         ref={canvasRef}
         width={600}
         height={350}
-        className="w-full h-full"
+        className="absolute inset-0 w-full h-full"
       />
       <motion.div
-        className="absolute top-4 right-4 px-4 py-2 rounded-lg bg-card border-2 border-lime/30"
+        className="absolute top-4 right-4 px-4 py-2 rounded-lg bg-card/90 backdrop-blur border-2 border-lime/30 shadow-lg"
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
       >

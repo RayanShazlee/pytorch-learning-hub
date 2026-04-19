@@ -203,15 +203,15 @@ export function RLVisualizer({ isPlaying = true }: RLVisualizerProps) {
   }, [isPlaying])
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full aspect-[3/2] rounded-xl overflow-hidden bg-gradient-to-br from-orange/5 via-coral/5 to-lime/5 border border-orange/20">
       <canvas
         ref={canvasRef}
         width={600}
         height={400}
-        className="w-full h-full"
+        className="absolute inset-0 w-full h-full"
       />
       <motion.div
-        className="absolute bottom-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg bg-card border-2 border-orange/30"
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg bg-card/90 backdrop-blur border-2 border-orange/30 shadow-lg"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
