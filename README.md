@@ -29,8 +29,9 @@ This repo includes a GitHub Actions workflow (`.github/workflows/deploy.yml`) th
 To turn it on (one-time setup):
 
 1. In GitHub, go to **Settings → Pages**.
-2. Under **Build and deployment → Source**, select **GitHub Actions**.
-3. Push to `main` (or run the *Deploy to GitHub Pages* workflow manually from the **Actions** tab).
+2. Under **Build and deployment → Source**, select **Deploy from a branch**.
+3. Set **Branch** to `gh-pages` and folder to `/ (root)`, then click **Save**.
+4. Push to `main` (or run the *Deploy to GitHub Pages* workflow manually from the **Actions** tab). The workflow builds the site and publishes it to the `gh-pages` branch, which Pages then serves.
 4. When the workflow finishes, the site URL is printed in the `deploy` job summary (typically `https://<owner>.github.io/<repo>/`).
 
 The Vite config uses `base: './'` so the built site works from any sub-path. The workflow also copies `index.html` to `404.html` as an SPA fallback so client-side routes resolve correctly on Pages.
