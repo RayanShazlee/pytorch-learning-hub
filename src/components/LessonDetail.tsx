@@ -213,9 +213,53 @@ export function LessonDetail({ lesson, onBack, onComplete, isCompleted }: Lesson
                 <h3 className="text-2xl font-bold mb-4 text-center bg-gradient-to-r from-pink to-coral bg-clip-text text-transparent">
                   Tensor Magic: Interactive Operations! ✨
                 </h3>
-                <p className="text-center text-muted-foreground mb-6">
-                  Click the buttons below to watch tensors transform! Each operation shows you how data changes.
-                </p>
+                <div className="prose prose-lg max-w-none space-y-4">
+                  <p className="text-lg">
+                    Tensors aren't just for storing numbers — they can <strong>transform</strong> too! Every operation in PyTorch is a little bit of magic that turns one tensor into another. 🪄
+                  </p>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="bg-gradient-to-br from-pink/10 to-pink/5 p-5 rounded-xl border-2 border-pink/30">
+                      <h4 className="font-bold text-lg text-pink mb-2">➕ Add & Subtract</h4>
+                      <p className="text-sm">Add two tensors together number-by-number, like stacking two towers of blocks.</p>
+                      <div className="bg-card p-3 rounded-lg font-mono text-xs mt-2">
+                        [1, 2, 3] + [4, 5, 6]<br/>= [5, 7, 9]
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-br from-coral/10 to-coral/5 p-5 rounded-xl border-2 border-coral/30">
+                      <h4 className="font-bold text-lg text-coral mb-2">✖️ Multiply</h4>
+                      <p className="text-sm">Multiply every number by another tensor or a single value (called a <em>scalar</em>).</p>
+                      <div className="bg-card p-3 rounded-lg font-mono text-xs mt-2">
+                        [1, 2, 3] × 2<br/>= [2, 4, 6]
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-br from-cyan/10 to-cyan/5 p-5 rounded-xl border-2 border-cyan/30">
+                      <h4 className="font-bold text-lg text-cyan mb-2">🔄 Reshape</h4>
+                      <p className="text-sm">Rearrange the same numbers into a new shape — like folding a paper strip into a square.</p>
+                      <div className="bg-card p-3 rounded-lg font-mono text-xs mt-2">
+                        [1, 2, 3, 4] → [[1, 2],<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3, 4]]
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-br from-lime/10 to-lime/5 p-5 rounded-xl border-2 border-lime/30">
+                      <h4 className="font-bold text-lg text-lime mb-2">🧮 Sum & Mean</h4>
+                      <p className="text-sm">Squash a whole tensor into a single number — the total or the average!</p>
+                      <div className="bg-card p-3 rounded-lg font-mono text-xs mt-2">
+                        sum([1, 2, 3]) = 6<br/>mean([1, 2, 3]) = 2
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-violet/10 to-primary/10 p-6 rounded-xl border-2 border-violet/30">
+                    <h4 className="font-bold text-lg mb-2">💡 Why it matters:</h4>
+                    <p className="text-sm">
+                      Every image filter, every AI prediction, every chatbot reply — they're all made of millions of these tiny tensor operations working together. Master these and you're speaking the language of AI! 🚀
+                    </p>
+                  </div>
+
+                  <p className="text-center text-muted-foreground">
+                    Click the buttons below to watch tensors transform in real time! ✨
+                  </p>
+                </div>
               </CardContent>
             </Card>
             
@@ -256,9 +300,72 @@ export function LessonDetail({ lesson, onBack, onComplete, isCompleted }: Lesson
                 <h3 className="text-2xl font-bold mb-4 text-center bg-gradient-to-r from-coral to-orange bg-clip-text text-transparent">
                   Understanding Neural Network Layers 🏗️
                 </h3>
-                <p className="text-center text-muted-foreground mb-6">
-                  Watch data flow through the layers - from input to output!
-                </p>
+                <div className="prose prose-lg max-w-none space-y-4">
+                  <p className="text-lg">
+                    Imagine a neural network as a factory 🏭 — data comes in one end, passes through a line of workers, and a finished answer comes out the other end. Each <strong>layer</strong> is one station on that factory line.
+                  </p>
+
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-r from-cyan/10 to-cyan/5 p-6 rounded-xl border-l-4 border-cyan">
+                      <h4 className="font-bold text-xl text-cyan mb-2 flex items-center gap-2">
+                        <span>🎯</span> Input Layer
+                      </h4>
+                      <p className="text-sm mb-2">This is where your raw data enters the network.</p>
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Example:</strong> For a 28×28 image, the input layer has 784 numbers — one for every pixel.
+                      </p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-violet/10 to-violet/5 p-6 rounded-xl border-l-4 border-violet">
+                      <h4 className="font-bold text-xl text-violet mb-2 flex items-center gap-2">
+                        <span>🔮</span> Hidden Layers
+                      </h4>
+                      <p className="text-sm mb-2">The "thinking" layers. Each one spots slightly more complex patterns than the one before it.</p>
+                      <ul className="text-xs text-muted-foreground space-y-1">
+                        <li>• <strong>Early layers</strong> find simple things — edges, colors, dots</li>
+                        <li>• <strong>Middle layers</strong> combine those into shapes — eyes, wheels, letters</li>
+                        <li>• <strong>Later layers</strong> combine shapes into whole things — faces, cars, words</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-lime/10 to-lime/5 p-6 rounded-xl border-l-4 border-lime">
+                      <h4 className="font-bold text-xl text-lime mb-2 flex items-center gap-2">
+                        <span>✨</span> Output Layer
+                      </h4>
+                      <p className="text-sm mb-2">The final answer! It has one neuron for each possible answer.</p>
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Example:</strong> To tell digits 0–9 apart, the output layer has 10 neurons; the one that lights up the brightest wins!
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-card p-6 rounded-xl border-2 border-pink/30">
+                    <h4 className="font-bold text-xl text-pink mb-3">🔗 How layers connect</h4>
+                    <p className="text-sm mb-3">
+                      Every neuron in one layer is usually connected to every neuron in the next layer. Each connection has a <strong>weight</strong> (how strong it is) that the network learns during training.
+                    </p>
+                    <div className="bg-muted/50 p-4 rounded-lg font-mono text-xs">
+                      output = activation( weight × input + bias )
+                    </div>
+                    <p className="text-xs mt-2 text-muted-foreground">
+                      Each layer multiplies, adds a bias, and applies an activation function — that's it! Stack enough of these and you get intelligence. 🤯
+                    </p>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-orange/10 to-coral/10 p-6 rounded-xl border-2 border-orange/30">
+                    <h4 className="font-bold text-lg mb-2">🧱 Layer types you'll meet:</h4>
+                    <div className="grid md:grid-cols-2 gap-3 text-xs">
+                      <div><strong>Linear (Dense)</strong> — every neuron connects to every other. The classic!</div>
+                      <div><strong>Convolutional</strong> — slides a tiny window over images to find patterns.</div>
+                      <div><strong>Recurrent</strong> — remembers what came before, perfect for sentences and music.</div>
+                      <div><strong>Dropout</strong> — randomly ignores neurons during training, like a study break!</div>
+                    </div>
+                  </div>
+
+                  <p className="text-center text-muted-foreground">
+                    Watch data flow through the layers below — from input to output! 👇
+                  </p>
+                </div>
               </CardContent>
             </Card>
             
@@ -275,9 +382,79 @@ export function LessonDetail({ lesson, onBack, onComplete, isCompleted }: Lesson
                 <h3 className="text-2xl font-bold mb-4 text-center bg-gradient-to-r from-violet to-primary bg-clip-text text-transparent">
                   Activation Functions: The Decision Makers! 🎮
                 </h3>
-                <p className="text-center text-muted-foreground mb-6">
-                  Try different activation functions and see how they transform inputs!
-                </p>
+                <div className="prose prose-lg max-w-none space-y-4">
+                  <p className="text-lg">
+                    An <strong>activation function</strong> is a tiny decision-maker that lives inside every neuron. It looks at the neuron's number and decides: "Should I pass this on, or should I stay quiet?" 🤔
+                  </p>
+
+                  <div className="bg-gradient-to-r from-violet/10 to-primary/10 p-6 rounded-xl border-2 border-violet/30">
+                    <h4 className="font-bold text-xl mb-2">💡 Why do we need them?</h4>
+                    <p className="text-sm">
+                      Without activation functions, a neural network — no matter how deep — would just be a very fancy calculator that can only draw straight lines. Activations add <strong>bends and curves</strong>, which is what lets AI learn complex patterns like faces, languages, and games! 🎨
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-r from-cyan/10 to-cyan/5 p-6 rounded-xl border-l-4 border-cyan">
+                      <h4 className="font-bold text-xl text-cyan mb-2 flex items-center gap-2">
+                        <span>⚡</span> ReLU (Rectified Linear Unit)
+                      </h4>
+                      <p className="text-sm mb-2">
+                        The simplest and most popular activation! If the number is negative, it becomes 0. Otherwise, it stays the same.
+                      </p>
+                      <div className="bg-card p-3 rounded-lg font-mono text-xs">
+                        ReLU(-5) = 0 &nbsp;&nbsp;|&nbsp;&nbsp; ReLU(0) = 0 &nbsp;&nbsp;|&nbsp;&nbsp; ReLU(7) = 7
+                      </div>
+                      <p className="text-xs mt-2 text-muted-foreground">
+                        <strong>Think of it like:</strong> a light switch — off for negatives, on for positives. Fast and works great for most hidden layers! 💡
+                      </p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-pink/10 to-pink/5 p-6 rounded-xl border-l-4 border-pink">
+                      <h4 className="font-bold text-xl text-pink mb-2 flex items-center gap-2">
+                        <span>📊</span> Sigmoid
+                      </h4>
+                      <p className="text-sm mb-2">
+                        Squishes any number into a value between 0 and 1 — perfect for "how likely is this?" questions.
+                      </p>
+                      <div className="bg-card p-3 rounded-lg font-mono text-xs">
+                        Sigmoid(-10) ≈ 0 &nbsp;&nbsp;|&nbsp;&nbsp; Sigmoid(0) = 0.5 &nbsp;&nbsp;|&nbsp;&nbsp; Sigmoid(10) ≈ 1
+                      </div>
+                      <p className="text-xs mt-2 text-muted-foreground">
+                        <strong>Think of it like:</strong> a confidence meter from 0% to 100%. Great for yes/no predictions! 🎯
+                      </p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-lime/10 to-lime/5 p-6 rounded-xl border-l-4 border-lime">
+                      <h4 className="font-bold text-xl text-lime mb-2 flex items-center gap-2">
+                        <span>🌊</span> Tanh
+                      </h4>
+                      <p className="text-sm mb-2">
+                        Like Sigmoid, but squishes numbers into a range of -1 to 1, so negatives stay negative.
+                      </p>
+                      <div className="bg-card p-3 rounded-lg font-mono text-xs">
+                        Tanh(-10) ≈ -1 &nbsp;&nbsp;|&nbsp;&nbsp; Tanh(0) = 0 &nbsp;&nbsp;|&nbsp;&nbsp; Tanh(10) ≈ 1
+                      </div>
+                      <p className="text-xs mt-2 text-muted-foreground">
+                        <strong>Think of it like:</strong> a balance scale — tells you how strongly the answer leans positive or negative. ⚖️
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-orange/10 to-coral/10 p-6 rounded-xl border-2 border-orange/30">
+                    <h4 className="font-bold text-lg mb-3">🎯 Which one should I use?</h4>
+                    <div className="grid md:grid-cols-2 gap-3 text-xs">
+                      <div><strong>Hidden layers:</strong> start with ReLU — fast and works almost everywhere.</div>
+                      <div><strong>Binary yes/no output:</strong> use Sigmoid.</div>
+                      <div><strong>Between -1 and 1:</strong> use Tanh.</div>
+                      <div><strong>Pick one class out of many:</strong> use Softmax (the cousin of Sigmoid for many categories).</div>
+                    </div>
+                  </div>
+
+                  <p className="text-center text-muted-foreground">
+                    Try different activation functions below and see how they transform inputs! 👇
+                  </p>
+                </div>
               </CardContent>
             </Card>
             

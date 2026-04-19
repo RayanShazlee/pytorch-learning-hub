@@ -1791,7 +1791,1816 @@ checkpoint = {
 }
 torch.save(checkpoint, 'checkpoint.pth')
 
-print("nn.Module examples complete!")`
+print("nn.Module examples complete!")`,
+
+    'pytorch-intro': `# Your first end-to-end PyTorch script
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import TensorDataset, DataLoader
+
+# 1. Check installation and pick a device
+print("PyTorch version:", torch.__version__)
+print("CUDA available:", torch.cuda.is_available())
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# 2. Fabricate a tiny dataset: y = 3x + noise
+X = torch.linspace(-5, 5, 200).unsqueeze(1)
+y = 3 * X + 0.5 * torch.randn_like(X)
+loader = DataLoader(TensorDataset(X, y), batch_size=32, shuffle=True)
+
+# 3. Define the simplest possible model
+class Line(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc = nn.Linear(1, 1)
+    def forward(self, x):
+        return self.fc(x)
+
+model = Line().to(device)
+opt = torch.optim.SGD(model.parameters(), lr=1e-2)
+
+# 4. Train
+for epoch in range(50):
+    for xb, yb in loader:
+        xb, yb = xb.to(device), yb.to(device)
+        opt.zero_grad()
+        loss = F.mse_loss(model(xb), yb)
+        loss.backward()
+        opt.step()
+
+# 5. Inspect what was learned
+w = model.fc.weight.item()
+b = model.fc.bias.item()
+print(f"Learned y = {w:.2f}x + {b:.2f}   (true: 3.00x + 0.00)")`,
+
+    'tensor-broadcasting': `import torch
+
+# ============ Broadcasting fundamentals ============
+a = torch.ones(3, 1, 4)       # (3, 1, 4)
+b = torch.arange(5).view(1, 5, 1).float()  # (1, 5, 1)
+c = a + b                     # broadcasts to (3, 5, 4)
+print("broadcast:", c.shape)
+
+# ============ Adding bias to a batch ============
+batch = torch.randn(32, 128)  # (B, D)
+bias  = torch.randn(128)      # (D,)
+out = batch + bias            # bias is broadcast along batch
+
+# ============ Advanced indexing ============
+x = torch.arange(24).view(2, 3, 4)
+print(x[0, 1, 2])                # scalar
+print(x[:, 0])                   # first row of every sheet
+print(x[x > 10])                 # boolean mask -> 1-D tensor
+
+# ============ Gather: pick labeled logits ============
+logits = torch.randn(4, 10)      # (batch=4, classes=10)
+labels = torch.tensor([3, 7, 1, 9])
+chosen = logits.gather(1, labels.unsqueeze(1)).squeeze(1)
+print("chosen logits:", chosen)
+
+# ============ Scatter: build one-hot ============
+one_hot = torch.zeros(4, 10).scatter_(1, labels.unsqueeze(1), 1.0)
+print("one-hot:\\n", one_hot)
+
+# ============ View vs reshape vs contiguous ============
+t = torch.arange(12).view(3, 4)
+tt = t.transpose(0, 1)           # non-contiguous
+# tt.view(-1)                    # RuntimeError
+flat = tt.contiguous().view(-1)  # OK
+print("flat:", flat)
+
+# ============ Memory-free expand ============
+row = torch.tensor([1, 2, 3])
+expanded = row.unsqueeze(0).expand(4, 3)  # no copy
+print(expanded.shape, expanded.stride())`,
+
+    'autograd-basics': `import torch
+
+# ======================================================
+# 1. Basic scalar gradient
+# ======================================================
+x = torch.tensor(2.0, requires_grad=True)
+y = torch.tensor(3.0, requires_grad=True)
+z = x**2 + y**3
+z.backward()
+print(f"dz/dx = {x.grad.item()}  (expected 4.0)")
+print(f"dz/dy = {y.grad.item()}  (expected 27.0)")
+
+# ======================================================
+# 2. Gradient accumulation and zeroing
+# ======================================================
+x.grad.zero_()
+for _ in range(3):
+    (x**2).backward()          # grads accumulate!
+print("accumulated dx:", x.grad.item())  # 3 * (2x) = 12.0
+
+# ======================================================
+# 3. Jacobian via backward with grad_outputs
+# ======================================================
+x = torch.tensor([1.0, 2.0, 3.0], requires_grad=True)
+y = x * x
+y.backward(torch.ones_like(y))  # Jacobian-vector product with 1s
+print("grad:", x.grad)          # 2x = [2, 4, 6]
+
+# ======================================================
+# 4. Detach to stop gradient flow
+# ======================================================
+a = torch.tensor(2.0, requires_grad=True)
+b = a * 3
+c = b.detach()                  # no gradient flows past here
+d = c * 4
+d.backward()
+print("a.grad after detach:", a.grad)  # None
+
+# ======================================================
+# 5. torch.no_grad for inference
+# ======================================================
+w = torch.randn(10, 10, requires_grad=True)
+x = torch.randn(10)
+with torch.no_grad():
+    y = w @ x                   # forward only, no graph built
+print("no_grad output requires_grad:", y.requires_grad)
+
+# ======================================================
+# 6. Higher-order gradients
+# ======================================================
+x = torch.tensor(2.0, requires_grad=True)
+y = x**3
+dy_dx  = torch.autograd.grad(y, x, create_graph=True)[0]   # 3x^2
+d2y_dx2 = torch.autograd.grad(dy_dx, x)[0]                 # 6x
+print(f"d2y/dx2 at x=2: {d2y_dx2.item()}  (expected 12.0)")`,
+
+    'cnn-architectures': `import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# ============ Classic conv block ============
+class ConvBlock(nn.Module):
+    def __init__(self, in_c, out_c):
+        super().__init__()
+        self.conv = nn.Conv2d(in_c, out_c, 3, padding=1, bias=False)
+        self.bn   = nn.BatchNorm2d(out_c)
+    def forward(self, x):
+        return F.relu(self.bn(self.conv(x)), inplace=True)
+
+# ============ Residual block (ResNet-style) ============
+class ResidualBlock(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.block = nn.Sequential(
+            ConvBlock(channels, channels),
+            nn.Conv2d(channels, channels, 3, padding=1, bias=False),
+            nn.BatchNorm2d(channels),
+        )
+    def forward(self, x):
+        return F.relu(x + self.block(x), inplace=True)
+
+# ============ Full small-ResNet for CIFAR ============
+class MiniResNet(nn.Module):
+    def __init__(self, num_classes=10):
+        super().__init__()
+        self.stem = ConvBlock(3, 64)
+        self.stage1 = nn.Sequential(ResidualBlock(64), ResidualBlock(64))
+        self.down1  = nn.Sequential(ConvBlock(64, 128), nn.MaxPool2d(2))
+        self.stage2 = nn.Sequential(ResidualBlock(128), ResidualBlock(128))
+        self.down2  = nn.Sequential(ConvBlock(128, 256), nn.MaxPool2d(2))
+        self.stage3 = nn.Sequential(ResidualBlock(256), ResidualBlock(256))
+        self.head = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(256, num_classes),
+        )
+    def forward(self, x):
+        x = self.stem(x)
+        x = self.stage1(x)
+        x = self.stage2(self.down1(x))
+        x = self.stage3(self.down2(x))
+        return self.head(x)
+
+model = MiniResNet()
+out = model(torch.randn(4, 3, 32, 32))
+print("output:", out.shape)
+print("params:", sum(p.numel() for p in model.parameters()))`,
+
+    'rnn-lstm': `import torch
+import torch.nn as nn
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+
+class BiLSTMTagger(nn.Module):
+    """BiLSTM + linear head for sequence tagging (e.g. POS / NER)."""
+    def __init__(self, vocab_size, n_tags, embed_dim=128, hidden_dim=256):
+        super().__init__()
+        self.embed = nn.Embedding(vocab_size, embed_dim, padding_idx=0)
+        self.lstm = nn.LSTM(
+            embed_dim, hidden_dim, num_layers=2,
+            batch_first=True, bidirectional=True, dropout=0.3,
+        )
+        self.out = nn.Linear(hidden_dim * 2, n_tags)
+
+    def forward(self, tokens, lengths):
+        emb = self.embed(tokens)
+        packed = pack_padded_sequence(
+            emb, lengths.cpu(), batch_first=True, enforce_sorted=False,
+        )
+        out, _ = self.lstm(packed)
+        out, _ = pad_packed_sequence(out, batch_first=True)
+        return self.out(out)  # (B, T, n_tags)
+
+# ---- Training loop sketch ----
+def train_step(model, tokens, lengths, labels, opt, criterion):
+    opt.zero_grad()
+    logits = model(tokens, lengths)
+    loss = criterion(
+        logits.view(-1, logits.size(-1)),
+        labels.view(-1),
+    )
+    loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+    opt.step()
+    return loss.item()
+
+# ---- Tiny smoke-test ----
+model = BiLSTMTagger(vocab_size=5000, n_tags=9)
+tokens = torch.randint(1, 5000, (8, 30))
+lengths = torch.randint(10, 31, (8,))
+labels = torch.randint(0, 9, (8, 30))
+opt = torch.optim.Adam(model.parameters(), lr=3e-4)
+loss_fn = nn.CrossEntropyLoss(ignore_index=-100)
+print("loss:", train_step(model, tokens, lengths, labels, opt, loss_fn))`,
+
+    'transformers': `import math, torch
+import torch.nn as nn
+
+# ============ Sinusoidal positional encoding ============
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_len=5000):
+        super().__init__()
+        pe = torch.zeros(max_len, d_model)
+        pos = torch.arange(max_len).unsqueeze(1).float()
+        div = torch.exp(torch.arange(0, d_model, 2).float()
+                        * (-math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(pos * div)
+        pe[:, 1::2] = torch.cos(pos * div)
+        self.register_buffer("pe", pe.unsqueeze(0))
+    def forward(self, x):
+        return x + self.pe[:, :x.size(1)]
+
+# ============ Mini encoder-only classifier ============
+class TransformerClassifier(nn.Module):
+    def __init__(self, vocab_size, num_classes,
+                 d_model=256, nhead=8, num_layers=4):
+        super().__init__()
+        self.embed = nn.Embedding(vocab_size, d_model, padding_idx=0)
+        self.pos = PositionalEncoding(d_model)
+        layer = nn.TransformerEncoderLayer(
+            d_model=d_model, nhead=nhead,
+            dim_feedforward=4 * d_model,
+            dropout=0.1, batch_first=True, norm_first=True,
+        )
+        self.encoder = nn.TransformerEncoder(layer, num_layers=num_layers)
+        self.cls = nn.Linear(d_model, num_classes)
+
+    def forward(self, tokens):
+        pad_mask = tokens == 0
+        x = self.pos(self.embed(tokens))
+        h = self.encoder(x, src_key_padding_mask=pad_mask)
+        # Mean-pool over non-pad positions
+        mask = (~pad_mask).unsqueeze(-1).float()
+        pooled = (h * mask).sum(1) / mask.sum(1).clamp_min(1)
+        return self.cls(pooled)
+
+# Smoke-test
+model = TransformerClassifier(vocab_size=10000, num_classes=4)
+logits = model(torch.randint(0, 10000, (8, 64)))
+print("logits:", logits.shape)`,
+
+    'loss-functions': `import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# ======= 1. Regression =======
+pred = torch.randn(32, 1, requires_grad=True)
+target = torch.randn(32, 1)
+print("MSE :", F.mse_loss(pred, target).item())
+print("L1  :", F.l1_loss(pred, target).item())
+print("Huber:", F.smooth_l1_loss(pred, target).item())
+
+# ======= 2. Multi-class classification =======
+logits  = torch.randn(32, 10, requires_grad=True)
+labels  = torch.randint(0, 10, (32,))
+ce = nn.CrossEntropyLoss()(logits, labels)
+print("CE  :", ce.item())
+
+# Class-weighted CE for imbalance
+weights = torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0,
+                        2.0, 2.0, 5.0, 5.0, 10.0])
+ce_w = nn.CrossEntropyLoss(weight=weights)(logits, labels)
+print("CE-w:", ce_w.item())
+
+# ======= 3. Binary / multi-label =======
+ml_logits  = torch.randn(32, 5)
+ml_targets = torch.randint(0, 2, (32, 5)).float()
+bce = nn.BCEWithLogitsLoss()(ml_logits, ml_targets)
+print("BCE :", bce.item())
+
+# ======= 4. Focal loss (hand-rolled) =======
+def focal_loss(logits, targets, alpha=0.25, gamma=2.0):
+    ce = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")
+    p = torch.sigmoid(logits)
+    p_t = p * targets + (1 - p) * (1 - targets)
+    return (alpha * (1 - p_t).pow(gamma) * ce).mean()
+
+print("Focal:", focal_loss(ml_logits, ml_targets).item())
+
+# ======= 5. Custom Dice loss for segmentation =======
+class DiceLoss(nn.Module):
+    def forward(self, logits, targets, eps=1e-6):
+        probs = torch.sigmoid(logits)
+        inter = (probs * targets).sum(dim=(2, 3))
+        union = probs.sum(dim=(2, 3)) + targets.sum(dim=(2, 3))
+        return 1 - ((2 * inter + eps) / (union + eps)).mean()
+
+seg_logits  = torch.randn(4, 1, 64, 64)
+seg_targets = torch.randint(0, 2, (4, 1, 64, 64)).float()
+print("Dice:", DiceLoss()(seg_logits, seg_targets).item())`,
+
+    'optimizers': `import torch, torch.nn as nn
+from torch.optim import AdamW, SGD
+from torch.optim.lr_scheduler import (
+    CosineAnnealingLR, OneCycleLR, LambdaLR,
+)
+
+model = nn.Sequential(
+    nn.Linear(128, 256), nn.GELU(),
+    nn.Linear(256, 256), nn.GELU(),
+    nn.Linear(256, 10),
+)
+
+# ---- Param groups: no decay for biases/norms ----
+decay, no_decay = [], []
+for name, p in model.named_parameters():
+    if not p.requires_grad: continue
+    if p.ndim == 1 or name.endswith(".bias"):
+        no_decay.append(p)
+    else:
+        decay.append(p)
+
+optimizer = AdamW(
+    [{"params": decay,    "weight_decay": 1e-2},
+     {"params": no_decay, "weight_decay": 0.0}],
+    lr=3e-4, betas=(0.9, 0.999),
+)
+
+# ---- Warmup + cosine schedule ----
+total_steps = 1000
+warmup = 100
+def lr_lambda(step):
+    if step < warmup:
+        return step / max(1, warmup)
+    progress = (step - warmup) / max(1, total_steps - warmup)
+    return 0.5 * (1 + torch.cos(torch.tensor(progress * 3.141592)).item())
+
+scheduler = LambdaLR(optimizer, lr_lambda)
+
+# ---- Training step with gradient clipping ----
+def step(x, y):
+    optimizer.zero_grad()
+    loss = nn.functional.cross_entropy(model(x), y)
+    loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+    optimizer.step()
+    scheduler.step()
+    return loss.item()
+
+# Smoke-test
+x = torch.randn(32, 128)
+y = torch.randint(0, 10, (32,))
+for s in range(5):
+    print(f"step {s}  loss={step(x, y):.4f}  lr={scheduler.get_last_lr()[0]:.2e}")`,
+
+    'training-loop': `import torch
+import torch.nn as nn
+from torch.cuda.amp import autocast, GradScaler
+from torch.utils.data import DataLoader
+
+def train_one_epoch(model, loader, loss_fn, optimizer, scaler, device):
+    model.train()
+    total, seen = 0.0, 0
+    for x, y in loader:
+        x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
+        optimizer.zero_grad(set_to_none=True)
+        with autocast():
+            loss = loss_fn(model(x), y)
+        scaler.scale(loss).backward()
+        scaler.unscale_(optimizer)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        scaler.step(optimizer)
+        scaler.update()
+        total += loss.item() * x.size(0); seen += x.size(0)
+    return total / seen
+
+@torch.no_grad()
+def evaluate(model, loader, loss_fn, device):
+    model.eval()
+    total, correct, seen = 0.0, 0, 0
+    for x, y in loader:
+        x, y = x.to(device), y.to(device)
+        logits = model(x)
+        total += loss_fn(logits, y).item() * x.size(0)
+        correct += (logits.argmax(1) == y).sum().item()
+        seen += x.size(0)
+    return total / seen, correct / seen
+
+def fit(model, train_loader, val_loader, epochs=20,
+        lr=3e-4, device="cuda", ckpt_path="best.pth"):
+    model.to(device)
+    opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-2)
+    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs)
+    scaler = GradScaler()
+    loss_fn = nn.CrossEntropyLoss()
+
+    best_acc = 0.0
+    for epoch in range(1, epochs + 1):
+        train_loss = train_one_epoch(model, train_loader, loss_fn, opt, scaler, device)
+        val_loss, val_acc = evaluate(model, val_loader, loss_fn, device)
+        sched.step()
+        print(f"epoch {epoch:02d}  train {train_loss:.4f}  "
+              f"val {val_loss:.4f}  acc {val_acc:.4f}")
+
+        if val_acc > best_acc:
+            best_acc = val_acc
+            torch.save({
+                "epoch": epoch,
+                "model": model.state_dict(),
+                "optimizer": opt.state_dict(),
+                "scheduler": sched.state_dict(),
+                "scaler": scaler.state_dict(),
+                "best_acc": best_acc,
+            }, ckpt_path)
+    return best_acc`,
+
+    'custom-autograd': `import torch
+from torch.autograd import Function
+
+# =====================================================
+# Example 1: custom ReLU with hand-written backward
+# =====================================================
+class MyReLU(Function):
+    @staticmethod
+    def forward(ctx, x):
+        ctx.save_for_backward(x)
+        return x.clamp(min=0)
+
+    @staticmethod
+    def backward(ctx, grad_out):
+        (x,) = ctx.saved_tensors
+        grad_in = grad_out.clone()
+        grad_in[x < 0] = 0
+        return grad_in
+
+# Verify numerically
+x = torch.randn(4, dtype=torch.double, requires_grad=True)
+torch.autograd.gradcheck(MyReLU.apply, (x,))
+print("MyReLU gradcheck ✅")
+
+# =====================================================
+# Example 2: Straight-Through Estimator (STE)
+# Forward: binarize.   Backward: identity.
+# Used in quantization-aware training.
+# =====================================================
+class BinarizeSTE(Function):
+    @staticmethod
+    def forward(ctx, x):
+        return (x > 0).float() * 2 - 1      # {-1, +1}
+
+    @staticmethod
+    def backward(ctx, grad_out):
+        return grad_out                      # pass gradient through
+
+x = torch.randn(5, requires_grad=True)
+y = BinarizeSTE.apply(x).sum()
+y.backward()
+print("STE grad:", x.grad)                   # all ones
+
+# =====================================================
+# Example 3: Gradient Reversal Layer (domain adaptation)
+# =====================================================
+class GradientReversal(Function):
+    @staticmethod
+    def forward(ctx, x, lambd):
+        ctx.lambd = lambd
+        return x.view_as(x)
+
+    @staticmethod
+    def backward(ctx, grad_out):
+        return -ctx.lambd * grad_out, None   # flip the sign
+
+def grad_reverse(x, lambd=1.0):
+    return GradientReversal.apply(x, lambd)
+
+features = torch.randn(8, 16, requires_grad=True)
+reversed_feats = grad_reverse(features, 0.5)
+loss = reversed_feats.sum()
+loss.backward()
+print("reversed grad sign ok:", (features.grad.sum() < 0).item())`,
+
+    'distributed-training': `# train_ddp.py
+# Launch with:  torchrun --nproc_per_node=NUM_GPUS train_ddp.py
+import os
+import torch
+import torch.nn as nn
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data import DataLoader, DistributedSampler, TensorDataset
+
+def setup():
+    dist.init_process_group(backend="nccl")
+    local_rank = int(os.environ["LOCAL_RANK"])
+    torch.cuda.set_device(local_rank)
+    return local_rank
+
+def cleanup():
+    dist.destroy_process_group()
+
+def is_main():
+    return (not dist.is_initialized()) or dist.get_rank() == 0
+
+def main():
+    local_rank = setup()
+    device = torch.device("cuda", local_rank)
+
+    # Fake dataset
+    X = torch.randn(10_000, 128)
+    y = torch.randint(0, 10, (10_000,))
+    ds = TensorDataset(X, y)
+    sampler = DistributedSampler(ds, shuffle=True, drop_last=True)
+    loader = DataLoader(ds, batch_size=64, sampler=sampler,
+                        num_workers=2, pin_memory=True)
+
+    model = nn.Sequential(
+        nn.Linear(128, 256), nn.GELU(),
+        nn.Linear(256, 10),
+    ).to(device)
+    model = DDP(model, device_ids=[local_rank])
+
+    opt = torch.optim.AdamW(model.parameters(), lr=3e-4)
+    loss_fn = nn.CrossEntropyLoss()
+
+    for epoch in range(5):
+        sampler.set_epoch(epoch)
+        for step, (xb, yb) in enumerate(loader):
+            xb, yb = xb.to(device), yb.to(device)
+            opt.zero_grad()
+            loss = loss_fn(model(xb), yb)
+            loss.backward()
+            opt.step()
+
+            if is_main() and step % 50 == 0:
+                print(f"epoch {epoch}  step {step}  loss {loss.item():.4f}")
+
+        # Save only from rank 0
+        if is_main():
+            torch.save(model.module.state_dict(), f"ckpt_epoch{epoch}.pth")
+
+    cleanup()
+
+if __name__ == "__main__":
+    main()`,
+
+    'model-optimization': `import torch
+import torch.nn as nn
+import torch.ao.quantization as tq
+
+# ==============================================
+# Base model
+# ==============================================
+class MLP(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(784, 256), nn.ReLU(),
+            nn.Linear(256, 128), nn.ReLU(),
+            nn.Linear(128, 10),
+        )
+    def forward(self, x): return self.net(x)
+
+model = MLP().eval()
+example = torch.randn(1, 784)
+
+# ==============================================
+# 1. Dynamic quantization (easy, CPU)
+# ==============================================
+quant_dyn = tq.quantize_dynamic(model, {nn.Linear}, dtype=torch.qint8)
+print("dynamic quantized output:", quant_dyn(example).shape)
+
+# ==============================================
+# 2. Structured magnitude pruning
+# ==============================================
+import torch.nn.utils.prune as prune
+pruned = MLP()
+for m in pruned.modules():
+    if isinstance(m, nn.Linear):
+        prune.l1_unstructured(m, name="weight", amount=0.3)
+        prune.remove(m, "weight")           # make sparsity permanent
+
+# ==============================================
+# 3. TorchScript export (tracing)
+# ==============================================
+scripted = torch.jit.trace(model, example)
+scripted.save("model_ts.pt")
+loaded = torch.jit.load("model_ts.pt")
+assert torch.allclose(loaded(example), model(example))
+
+# ==============================================
+# 4. ONNX export with dynamic batch
+# ==============================================
+torch.onnx.export(
+    model, example, "model.onnx",
+    input_names=["input"], output_names=["logits"],
+    dynamic_axes={"input": {0: "batch"}, "logits": {0: "batch"}},
+    opset_version=17, do_constant_folding=True,
+)
+
+# ==============================================
+# 5. torch.compile (PyTorch 2.x) — free speedup
+# ==============================================
+if hasattr(torch, "compile"):
+    fast_model = torch.compile(model)
+    print("compiled output:", fast_model(example).shape)`,
+
+    'cv-fundamentals': `import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+from torchvision.models import resnet18, ResNet18_Weights
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# ============ Data pipeline ============
+train_tf = transforms.Compose([
+    transforms.RandomResizedCrop(224),
+    transforms.RandomHorizontalFlip(),
+    transforms.ColorJitter(0.2, 0.2, 0.2),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406],
+                         [0.229, 0.224, 0.225]),
+])
+val_tf = transforms.Compose([
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406],
+                         [0.229, 0.224, 0.225]),
+])
+
+# Replace with your own ImageFolder directories
+# train_ds = datasets.ImageFolder("data/train", train_tf)
+# val_ds   = datasets.ImageFolder("data/val",   val_tf)
+
+# ============ Model: fine-tune ResNet-18 ============
+def build_model(num_classes: int):
+    weights = ResNet18_Weights.DEFAULT
+    model = resnet18(weights=weights)
+    # Freeze the backbone for the first few epochs
+    for p in model.parameters():
+        p.requires_grad = False
+    model.fc = nn.Linear(model.fc.in_features, num_classes)
+    return model
+
+# ============ Training loop sketch ============
+def train(num_classes=10, epochs=5, lr=1e-3):
+    model = build_model(num_classes).to(device)
+    opt = torch.optim.AdamW(
+        [p for p in model.parameters() if p.requires_grad], lr=lr,
+    )
+    loss_fn = nn.CrossEntropyLoss()
+    # plug in your DataLoaders here
+    # for epoch in range(epochs): ...
+    return model
+
+if __name__ == "__main__":
+    model = build_model(num_classes=10)
+    print(model(torch.randn(2, 3, 224, 224)).shape)`,
+
+    'object-detection': `import torch
+from torchvision.models.detection import (
+    fasterrcnn_resnet50_fpn_v2, FasterRCNN_ResNet50_FPN_V2_Weights,
+)
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+from torchvision.ops import nms
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# ============ 1. Load pretrained Faster R-CNN ============
+def build_model(num_classes):
+    weights = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
+    model = fasterrcnn_resnet50_fpn_v2(weights=weights)
+    in_feat = model.roi_heads.box_predictor.cls_score.in_features
+    # +1 for the background class
+    model.roi_heads.box_predictor = FastRCNNPredictor(in_feat, num_classes + 1)
+    return model
+
+model = build_model(num_classes=3).to(device).eval()
+
+# ============ 2. Inference with NMS & confidence filter ============
+@torch.no_grad()
+def predict(images, score_thresh=0.5, nms_iou=0.5):
+    outputs = model([img.to(device) for img in images])
+    results = []
+    for o in outputs:
+        keep = o["scores"] > score_thresh
+        boxes, scores, labels = o["boxes"][keep], o["scores"][keep], o["labels"][keep]
+        # Per-class NMS
+        final = []
+        for c in labels.unique():
+            idx = (labels == c).nonzero(as_tuple=True)[0]
+            k = nms(boxes[idx], scores[idx], nms_iou)
+            final.append(idx[k])
+        final = torch.cat(final) if final else torch.empty(0, dtype=torch.long)
+        results.append({
+            "boxes":  boxes[final],
+            "scores": scores[final],
+            "labels": labels[final],
+        })
+    return results
+
+# ============ 3. Training step sketch ============
+def training_step(images, targets, optimizer):
+    """images: list[Tensor[3, H, W]], targets: list[dict(boxes, labels)]"""
+    model.train()
+    loss_dict = model(images, targets)
+    loss = sum(loss_dict.values())
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    return {k: v.item() for k, v in loss_dict.items()}
+
+if __name__ == "__main__":
+    img = torch.rand(3, 480, 640)
+    print(predict([img]))`,
+
+    'image-segmentation': `import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+def double_conv(in_c, out_c):
+    return nn.Sequential(
+        nn.Conv2d(in_c, out_c, 3, padding=1, bias=False),
+        nn.BatchNorm2d(out_c), nn.ReLU(inplace=True),
+        nn.Conv2d(out_c, out_c, 3, padding=1, bias=False),
+        nn.BatchNorm2d(out_c), nn.ReLU(inplace=True),
+    )
+
+class UNet(nn.Module):
+    def __init__(self, in_channels=3, num_classes=2, base=32):
+        super().__init__()
+        self.d1 = double_conv(in_channels, base)
+        self.d2 = double_conv(base,     base * 2)
+        self.d3 = double_conv(base * 2, base * 4)
+        self.bott = double_conv(base * 4, base * 8)
+        self.up3 = nn.ConvTranspose2d(base * 8, base * 4, 2, stride=2)
+        self.u3  = double_conv(base * 8, base * 4)
+        self.up2 = nn.ConvTranspose2d(base * 4, base * 2, 2, stride=2)
+        self.u2  = double_conv(base * 4, base * 2)
+        self.up1 = nn.ConvTranspose2d(base * 2, base,     2, stride=2)
+        self.u1  = double_conv(base * 2, base)
+        self.head = nn.Conv2d(base, num_classes, 1)
+
+    def forward(self, x):
+        s1 = self.d1(x)
+        s2 = self.d2(F.max_pool2d(s1, 2))
+        s3 = self.d3(F.max_pool2d(s2, 2))
+        b  = self.bott(F.max_pool2d(s3, 2))
+        x  = self.u3(torch.cat([self.up3(b), s3], dim=1))
+        x  = self.u2(torch.cat([self.up2(x), s2], dim=1))
+        x  = self.u1(torch.cat([self.up1(x), s1], dim=1))
+        return self.head(x)
+
+# ============ Combined Dice + CE loss ============
+class DiceCELoss(nn.Module):
+    def __init__(self, dice_weight=0.5):
+        super().__init__()
+        self.dw = dice_weight
+        self.ce = nn.CrossEntropyLoss()
+    def forward(self, logits, targets):
+        ce = self.ce(logits, targets)
+        probs = logits.softmax(1)
+        one_hot = F.one_hot(targets, logits.size(1)).permute(0, 3, 1, 2).float()
+        inter = (probs * one_hot).sum(dim=(2, 3))
+        union = probs.sum(dim=(2, 3)) + one_hot.sum(dim=(2, 3))
+        dice = 1 - ((2 * inter + 1e-6) / (union + 1e-6)).mean()
+        return (1 - self.dw) * ce + self.dw * dice
+
+# Smoke-test
+model = UNet(num_classes=3)
+logits = model(torch.randn(2, 3, 128, 128))
+targets = torch.randint(0, 3, (2, 128, 128))
+print("logits:", logits.shape, "loss:", DiceCELoss()(logits, targets).item())`,
+
+    'pose-estimation': `import torch
+import torch.nn.functional as F
+from torchvision.models.detection import (
+    keypointrcnn_resnet50_fpn, KeypointRCNN_ResNet50_FPN_Weights,
+)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# ============ 1. Use Torchvision's Keypoint R-CNN ============
+weights = KeypointRCNN_ResNet50_FPN_Weights.DEFAULT
+model = keypointrcnn_resnet50_fpn(weights=weights).to(device).eval()
+
+COCO_SKELETON = [
+    (5, 7), (7, 9), (6, 8), (8, 10),   # arms
+    (11, 13), (13, 15), (12, 14), (14, 16),  # legs
+    (5, 6), (11, 12), (5, 11), (6, 12),  # torso
+]
+
+@torch.no_grad()
+def predict(image, score_thresh=0.8):
+    out = model([image.to(device)])[0]
+    keep = out["scores"] > score_thresh
+    return {
+        "keypoints": out["keypoints"][keep],  # (N, 17, 3)
+        "scores":    out["scores"][keep],
+        "boxes":     out["boxes"][keep],
+    }
+
+# ============ 2. Heatmap-based pose head (manual training) ============
+def coords_to_heatmap(coords, H, W, sigma=2.0):
+    """coords: (N, K, 2) in pixel space -> (N, K, H, W) Gaussian heatmaps"""
+    N, K, _ = coords.shape
+    ys = torch.arange(H).view(1, 1, H, 1).float()
+    xs = torch.arange(W).view(1, 1, 1, W).float()
+    cy = coords[..., 1].view(N, K, 1, 1).float()
+    cx = coords[..., 0].view(N, K, 1, 1).float()
+    return torch.exp(-((xs - cx) ** 2 + (ys - cy) ** 2) / (2 * sigma ** 2))
+
+def soft_argmax_2d(heatmaps):
+    """Differentiable keypoint extraction."""
+    N, K, H, W = heatmaps.shape
+    probs = heatmaps.view(N, K, -1).softmax(-1).view(N, K, H, W)
+    ys = torch.arange(H, device=heatmaps.device).view(1, 1, H, 1).float()
+    xs = torch.arange(W, device=heatmaps.device).view(1, 1, 1, W).float()
+    x = (probs * xs).sum(dim=(2, 3))
+    y = (probs * ys).sum(dim=(2, 3))
+    return torch.stack([x, y], dim=-1)
+
+# Smoke-test
+img = torch.rand(3, 480, 640)
+print(predict(img)["keypoints"].shape)`,
+
+    'gan-basics': `import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+Z_DIM, IMG_DIM = 100, 28 * 28
+
+class Generator(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(Z_DIM, 256), nn.LeakyReLU(0.2),
+            nn.Linear(256, 512),   nn.LeakyReLU(0.2),
+            nn.Linear(512, IMG_DIM), nn.Tanh(),
+        )
+    def forward(self, z): return self.net(z)
+
+class Discriminator(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(IMG_DIM, 512), nn.LeakyReLU(0.2), nn.Dropout(0.3),
+            nn.Linear(512, 256),     nn.LeakyReLU(0.2), nn.Dropout(0.3),
+            nn.Linear(256, 1),
+        )
+    def forward(self, x): return self.net(x)
+
+def train_gan(dataset, epochs=20, batch_size=128, lr=2e-4):
+    G = Generator().to(device)
+    D = Discriminator().to(device)
+    opt_G = torch.optim.Adam(G.parameters(), lr=lr, betas=(0.5, 0.999))
+    opt_D = torch.optim.Adam(D.parameters(), lr=lr, betas=(0.5, 0.999))
+    bce = nn.BCEWithLogitsLoss()
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    for epoch in range(epochs):
+        for real, in loader:
+            real = real.view(real.size(0), -1).to(device)
+            B = real.size(0)
+
+            # --- Train Discriminator ---
+            z = torch.randn(B, Z_DIM, device=device)
+            fake = G(z).detach()
+            loss_D = bce(D(real), torch.ones (B, 1, device=device)) + \\
+                     bce(D(fake), torch.zeros(B, 1, device=device))
+            opt_D.zero_grad(); loss_D.backward(); opt_D.step()
+
+            # --- Train Generator ---
+            z = torch.randn(B, Z_DIM, device=device)
+            fake = G(z)
+            loss_G = bce(D(fake), torch.ones(B, 1, device=device))
+            opt_G.zero_grad(); loss_G.backward(); opt_G.step()
+
+        print(f"epoch {epoch}  D={loss_D.item():.3f}  G={loss_G.item():.3f}")
+    return G, D
+
+if __name__ == "__main__":
+    fake_data = TensorDataset(torch.randn(1024, IMG_DIM))
+    train_gan(fake_data, epochs=2)`,
+
+    'dcgan': `import torch
+import torch.nn as nn
+
+# --- Weight init from the DCGAN paper ---
+def weights_init(m):
+    classname = m.__class__.__name__
+    if "Conv" in classname:
+        nn.init.normal_(m.weight, 0.0, 0.02)
+    elif "BatchNorm" in classname:
+        nn.init.normal_(m.weight, 1.0, 0.02)
+        nn.init.zeros_(m.bias)
+
+class DCGenerator(nn.Module):
+    """z -> 64x64 RGB image"""
+    def __init__(self, z_dim=100, ngf=64, nc=3):
+        super().__init__()
+        self.main = nn.Sequential(
+            nn.ConvTranspose2d(z_dim, ngf*8, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(ngf*8), nn.ReLU(True),
+            nn.ConvTranspose2d(ngf*8, ngf*4, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ngf*4), nn.ReLU(True),
+            nn.ConvTranspose2d(ngf*4, ngf*2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ngf*2), nn.ReLU(True),
+            nn.ConvTranspose2d(ngf*2, ngf,   4, 2, 1, bias=False),
+            nn.BatchNorm2d(ngf),   nn.ReLU(True),
+            nn.ConvTranspose2d(ngf, nc, 4, 2, 1, bias=False),
+            nn.Tanh(),
+        )
+    def forward(self, z):
+        return self.main(z)
+
+class DCDiscriminator(nn.Module):
+    def __init__(self, ndf=64, nc=3):
+        super().__init__()
+        self.main = nn.Sequential(
+            nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
+            nn.LeakyReLU(0.2, True),
+            nn.Conv2d(ndf, ndf*2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ndf*2), nn.LeakyReLU(0.2, True),
+            nn.Conv2d(ndf*2, ndf*4, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ndf*4), nn.LeakyReLU(0.2, True),
+            nn.Conv2d(ndf*4, ndf*8, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ndf*8), nn.LeakyReLU(0.2, True),
+            nn.Conv2d(ndf*8, 1, 4, 1, 0, bias=False),
+        )
+    def forward(self, x):
+        return self.main(x).view(-1)
+
+G = DCGenerator().apply(weights_init)
+D = DCDiscriminator().apply(weights_init)
+
+# DCGAN-recommended optimizer settings
+opt_G = torch.optim.Adam(G.parameters(), lr=2e-4, betas=(0.5, 0.999))
+opt_D = torch.optim.Adam(D.parameters(), lr=2e-4, betas=(0.5, 0.999))
+bce = nn.BCEWithLogitsLoss()
+
+# One training step
+z = torch.randn(16, 100, 1, 1)
+fake = G(z)
+print("fake shape:", fake.shape, "D(fake) shape:", D(fake).shape)`,
+
+    'stylegan': `# Minimal StyleGAN-style building blocks (educational, not SOTA quality).
+# For production use the official NVIDIA repo or 'stylegan2-pytorch'.
+import math
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class PixelNorm(nn.Module):
+    def forward(self, x):
+        return x / (x.pow(2).mean(dim=1, keepdim=True) + 1e-8).sqrt()
+
+class MappingNetwork(nn.Module):
+    """z (latent) -> w (style)  [8-layer MLP]"""
+    def __init__(self, z_dim=512, w_dim=512, n_layers=8):
+        super().__init__()
+        layers = [PixelNorm()]
+        for _ in range(n_layers):
+            layers += [nn.Linear(z_dim, w_dim), nn.LeakyReLU(0.2)]
+            z_dim = w_dim
+        self.net = nn.Sequential(*layers)
+    def forward(self, z):
+        return self.net(z)
+
+class AdaIN(nn.Module):
+    """Adaptive Instance Normalization conditioned on w."""
+    def __init__(self, channels, w_dim):
+        super().__init__()
+        self.style = nn.Linear(w_dim, channels * 2)
+    def forward(self, x, w):
+        style = self.style(w).unsqueeze(-1).unsqueeze(-1)
+        ys, yb = style.chunk(2, dim=1)
+        x = (x - x.mean(dim=(2, 3), keepdim=True)) / (
+            x.std(dim=(2, 3), keepdim=True) + 1e-8
+        )
+        return ys * x + yb
+
+class NoiseInjection(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.weight = nn.Parameter(torch.zeros(1, channels, 1, 1))
+    def forward(self, x):
+        noise = torch.randn(x.size(0), 1, x.size(2), x.size(3), device=x.device)
+        return x + self.weight * noise
+
+class StyleBlock(nn.Module):
+    def __init__(self, in_c, out_c, w_dim):
+        super().__init__()
+        self.up = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False)
+        self.conv = nn.Conv2d(in_c, out_c, 3, padding=1)
+        self.noise = NoiseInjection(out_c)
+        self.adain = AdaIN(out_c, w_dim)
+        self.act = nn.LeakyReLU(0.2)
+    def forward(self, x, w):
+        x = self.conv(self.up(x))
+        x = self.noise(x)
+        return self.adain(self.act(x), w)
+
+class TinyStyleGAN(nn.Module):
+    def __init__(self, z_dim=512, w_dim=512):
+        super().__init__()
+        self.mapping = MappingNetwork(z_dim, w_dim)
+        self.const = nn.Parameter(torch.randn(1, 512, 4, 4))
+        self.block1 = StyleBlock(512, 256, w_dim)   #  8x8
+        self.block2 = StyleBlock(256, 128, w_dim)   # 16x16
+        self.block3 = StyleBlock(128,  64, w_dim)   # 32x32
+        self.to_rgb = nn.Conv2d(64, 3, 1)
+    def forward(self, z):
+        w = self.mapping(z)
+        x = self.const.expand(z.size(0), -1, -1, -1)
+        x = self.block1(x, w)
+        x = self.block2(x, w)
+        x = self.block3(x, w)
+        return torch.tanh(self.to_rgb(x))
+
+G = TinyStyleGAN()
+z = torch.randn(4, 512)
+img = G(z)
+print("image:", img.shape)  # (4, 3, 32, 32)`,
+
+    'wgan': `import torch
+import torch.nn as nn
+
+# ============ Simple MLP critic / generator ============
+class Generator(nn.Module):
+    def __init__(self, z_dim=100, img_dim=784):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(z_dim, 256), nn.ReLU(True),
+            nn.Linear(256, 512),   nn.ReLU(True),
+            nn.Linear(512, img_dim), nn.Tanh(),
+        )
+    def forward(self, z): return self.net(z)
+
+class Critic(nn.Module):
+    """IMPORTANT for WGAN-GP: use LayerNorm, NOT BatchNorm."""
+    def __init__(self, img_dim=784):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(img_dim, 512), nn.LayerNorm(512), nn.LeakyReLU(0.2),
+            nn.Linear(512, 256),     nn.LayerNorm(256), nn.LeakyReLU(0.2),
+            nn.Linear(256, 1),   # no sigmoid!
+        )
+    def forward(self, x): return self.net(x)
+
+# ============ Gradient penalty ============
+def gradient_penalty(critic, real, fake):
+    B = real.size(0)
+    alpha = torch.rand(B, 1, device=real.device)
+    interp = (alpha * real + (1 - alpha) * fake).requires_grad_(True)
+    d_interp = critic(interp)
+    grads = torch.autograd.grad(
+        outputs=d_interp, inputs=interp,
+        grad_outputs=torch.ones_like(d_interp),
+        create_graph=True, retain_graph=True,
+    )[0]
+    return ((grads.norm(2, dim=1) - 1) ** 2).mean()
+
+# ============ WGAN-GP training loop ============
+def train(loader, z_dim=100, n_critic=5, lambda_gp=10, lr=1e-4, epochs=20):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    G = Generator(z_dim).to(device)
+    C = Critic().to(device)
+    opt_G = torch.optim.Adam(G.parameters(), lr=lr, betas=(0.0, 0.9))
+    opt_C = torch.optim.Adam(C.parameters(), lr=lr, betas=(0.0, 0.9))
+
+    for epoch in range(epochs):
+        for real, in loader:
+            real = real.view(real.size(0), -1).to(device)
+
+            # Critic updates (n_critic per generator step)
+            for _ in range(n_critic):
+                z = torch.randn(real.size(0), z_dim, device=device)
+                fake = G(z).detach()
+                gp = gradient_penalty(C, real, fake)
+                loss_C = C(fake).mean() - C(real).mean() + lambda_gp * gp
+                opt_C.zero_grad(); loss_C.backward(); opt_C.step()
+
+            # Generator update
+            z = torch.randn(real.size(0), z_dim, device=device)
+            loss_G = -C(G(z)).mean()
+            opt_G.zero_grad(); loss_G.backward(); opt_G.step()
+
+        print(f"epoch {epoch}  C={loss_C.item():.3f}  G={loss_G.item():.3f}")
+    return G, C`,
+
+    'diffusion-models': `import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# ============ 1. Noise schedule ============
+class DiffusionSchedule:
+    def __init__(self, T=1000, device="cpu"):
+        self.T = T
+        self.betas = torch.linspace(1e-4, 0.02, T, device=device)
+        self.alphas = 1.0 - self.betas
+        self.alpha_bars = torch.cumprod(self.alphas, dim=0)
+
+    def q_sample(self, x0, t, noise):
+        ab = self.alpha_bars[t].view(-1, 1, 1, 1)
+        return ab.sqrt() * x0 + (1 - ab).sqrt() * noise
+
+# ============ 2. Tiny denoising U-Net with time embedding ============
+class TimeEmbedding(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.dim = dim
+    def forward(self, t):
+        half = self.dim // 2
+        freqs = torch.exp(
+            -torch.arange(half, device=t.device)
+            * (torch.log(torch.tensor(10000.0)) / half)
+        )
+        args = t.float().unsqueeze(1) * freqs.unsqueeze(0)
+        return torch.cat([args.sin(), args.cos()], dim=-1)
+
+class TinyUNet(nn.Module):
+    def __init__(self, ch=64, t_dim=128):
+        super().__init__()
+        self.t_emb = TimeEmbedding(t_dim)
+        self.t_mlp = nn.Sequential(nn.Linear(t_dim, ch), nn.GELU(), nn.Linear(ch, ch))
+        self.enc = nn.Sequential(nn.Conv2d(3, ch, 3, padding=1), nn.GELU(),
+                                 nn.Conv2d(ch, ch, 3, padding=1), nn.GELU())
+        self.mid = nn.Conv2d(ch, ch, 3, padding=1)
+        self.dec = nn.Sequential(nn.Conv2d(ch, ch, 3, padding=1), nn.GELU(),
+                                 nn.Conv2d(ch, 3, 3, padding=1))
+    def forward(self, x, t):
+        t = self.t_mlp(self.t_emb(t)).unsqueeze(-1).unsqueeze(-1)
+        h = self.enc(x) + t
+        h = self.mid(h) + t
+        return self.dec(h)
+
+# ============ 3. Training step (ε-prediction) ============
+def training_step(model, sched, x0):
+    t = torch.randint(0, sched.T, (x0.size(0),), device=x0.device)
+    noise = torch.randn_like(x0)
+    xt = sched.q_sample(x0, t, noise)
+    pred = model(xt, t)
+    return F.mse_loss(pred, noise)
+
+# ============ 4. DDPM sampling ============
+@torch.no_grad()
+def sample(model, sched, shape, device="cpu"):
+    x = torch.randn(shape, device=device)
+    for t in reversed(range(sched.T)):
+        tt = torch.full((shape[0],), t, device=device, dtype=torch.long)
+        pred_noise = model(x, tt)
+        alpha = sched.alphas[t]
+        alpha_bar = sched.alpha_bars[t]
+        coef = (1 - alpha) / (1 - alpha_bar).sqrt()
+        mean = (x - coef * pred_noise) / alpha.sqrt()
+        if t > 0:
+            x = mean + sched.betas[t].sqrt() * torch.randn_like(x)
+        else:
+            x = mean
+    return x.clamp(-1, 1)
+
+# Smoke-test
+sched = DiffusionSchedule(T=100)
+model = TinyUNet()
+x0 = torch.randn(2, 3, 32, 32)
+print("loss:", training_step(model, sched, x0).item())`,
+
+    'rl-basics': `import gymnasium as gym
+import numpy as np
+from collections import defaultdict
+
+# ============ 1. Environment basics ============
+env = gym.make("FrozenLake-v1", is_slippery=False)
+print("obs space:", env.observation_space)
+print("action space:", env.action_space)
+
+# ============ 2. Tabular Q-learning ============
+def q_learning(env, episodes=2000, alpha=0.1, gamma=0.99,
+               eps_start=1.0, eps_end=0.05):
+    Q = defaultdict(lambda: np.zeros(env.action_space.n))
+    returns = []
+    for ep in range(episodes):
+        eps = eps_start + (eps_end - eps_start) * ep / episodes
+        obs, _ = env.reset()
+        total = 0.0
+        done = False
+        while not done:
+            if np.random.rand() < eps:
+                a = env.action_space.sample()
+            else:
+                a = int(np.argmax(Q[obs]))
+            next_obs, r, term, trunc, _ = env.step(a)
+            done = term or trunc
+            # Bellman update
+            Q[obs][a] += alpha * (r + gamma * np.max(Q[next_obs]) - Q[obs][a])
+            obs = next_obs
+            total += r
+        returns.append(total)
+    return Q, returns
+
+# ============ 3. Evaluate the learned policy ============
+def evaluate(env, Q, episodes=100):
+    totals = []
+    for _ in range(episodes):
+        obs, _ = env.reset()
+        total, done = 0.0, False
+        while not done:
+            a = int(np.argmax(Q[obs]))
+            obs, r, term, trunc, _ = env.step(a)
+            done = term or trunc
+            total += r
+        totals.append(total)
+    return np.mean(totals)
+
+if __name__ == "__main__":
+    Q, returns = q_learning(env)
+    print(f"Avg return (last 100 eps): {np.mean(returns[-100:]):.2f}")
+    print(f"Eval avg return: {evaluate(env, Q):.2f}")
+    env.close()`,
+
+    'dqn': `import random
+from collections import deque, namedtuple
+
+import gymnasium as gym
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+Transition = namedtuple("Transition", "s a r s_next done")
+
+class ReplayBuffer:
+    def __init__(self, cap=100_000):
+        self.buf = deque(maxlen=cap)
+    def push(self, *args): self.buf.append(Transition(*args))
+    def sample(self, batch):
+        items = random.sample(self.buf, batch)
+        b = Transition(*zip(*items))
+        return (
+            torch.tensor(b.s,       dtype=torch.float32),
+            torch.tensor(b.a,       dtype=torch.long),
+            torch.tensor(b.r,       dtype=torch.float32),
+            torch.tensor(b.s_next,  dtype=torch.float32),
+            torch.tensor(b.done,    dtype=torch.float32),
+        )
+    def __len__(self): return len(self.buf)
+
+class QNet(nn.Module):
+    def __init__(self, obs_dim, n_actions):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(obs_dim, 128), nn.ReLU(),
+            nn.Linear(128, 128),     nn.ReLU(),
+            nn.Linear(128, n_actions),
+        )
+    def forward(self, x): return self.net(x)
+
+def train_dqn(env_name="CartPole-v1", episodes=400,
+              gamma=0.99, lr=1e-3, batch=64,
+              eps_start=1.0, eps_end=0.05, eps_decay=0.995,
+              target_update=10):
+    env = gym.make(env_name)
+    obs_dim, n_actions = env.observation_space.shape[0], env.action_space.n
+
+    q = QNet(obs_dim, n_actions)
+    q_target = QNet(obs_dim, n_actions); q_target.load_state_dict(q.state_dict())
+    opt = torch.optim.Adam(q.parameters(), lr=lr)
+    buffer = ReplayBuffer()
+    eps = eps_start
+
+    for ep in range(episodes):
+        obs, _ = env.reset()
+        total, done = 0.0, False
+        while not done:
+            if random.random() < eps:
+                a = env.action_space.sample()
+            else:
+                with torch.no_grad():
+                    a = int(q(torch.tensor(obs, dtype=torch.float32)).argmax())
+            next_obs, r, term, trunc, _ = env.step(a)
+            done = term or trunc
+            buffer.push(obs, a, r, next_obs, float(done))
+            obs = next_obs; total += r
+
+            if len(buffer) >= 1000:
+                s, acts, rews, s_next, d = buffer.sample(batch)
+                q_val = q(s).gather(1, acts.unsqueeze(1)).squeeze(1)
+                with torch.no_grad():
+                    # Double DQN: online picks action, target evaluates it
+                    next_act = q(s_next).argmax(1, keepdim=True)
+                    q_next = q_target(s_next).gather(1, next_act).squeeze(1)
+                    target = rews + gamma * q_next * (1 - d)
+                loss = F.smooth_l1_loss(q_val, target)
+                opt.zero_grad(); loss.backward()
+                torch.nn.utils.clip_grad_norm_(q.parameters(), 10.0)
+                opt.step()
+
+        eps = max(eps_end, eps * eps_decay)
+        if ep % target_update == 0:
+            q_target.load_state_dict(q.state_dict())
+        if ep % 20 == 0:
+            print(f"ep {ep:03d}  return {total:.1f}  eps {eps:.2f}")
+    env.close()
+    return q`,
+
+    'policy-gradient': `import gymnasium as gym
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.distributions import Categorical
+
+class ActorCritic(nn.Module):
+    def __init__(self, obs_dim, n_actions):
+        super().__init__()
+        self.shared = nn.Sequential(
+            nn.Linear(obs_dim, 128), nn.Tanh(),
+            nn.Linear(128, 128),     nn.Tanh(),
+        )
+        self.actor  = nn.Linear(128, n_actions)
+        self.critic = nn.Linear(128, 1)
+    def forward(self, obs):
+        h = self.shared(obs)
+        return self.actor(h), self.critic(h).squeeze(-1)
+
+def compute_returns(rewards, gamma=0.99):
+    R, out = 0.0, []
+    for r in reversed(rewards):
+        R = r + gamma * R
+        out.insert(0, R)
+    return torch.tensor(out, dtype=torch.float32)
+
+def train(env_name="CartPole-v1", episodes=500, lr=3e-4,
+          entropy_coef=0.01, value_coef=0.5):
+    env = gym.make(env_name)
+    model = ActorCritic(env.observation_space.shape[0], env.action_space.n)
+    opt = torch.optim.Adam(model.parameters(), lr=lr)
+
+    for ep in range(episodes):
+        obs, _ = env.reset()
+        log_probs, values, rewards, entropies = [], [], [], []
+        done, total = False, 0.0
+
+        while not done:
+            obs_t = torch.tensor(obs, dtype=torch.float32)
+            logits, value = model(obs_t)
+            dist = Categorical(logits=logits)
+            a = dist.sample()
+            obs, r, term, trunc, _ = env.step(a.item())
+            done = term or trunc
+            log_probs.append(dist.log_prob(a))
+            values.append(value)
+            rewards.append(r)
+            entropies.append(dist.entropy())
+            total += r
+
+        returns = compute_returns(rewards)
+        returns = (returns - returns.mean()) / (returns.std() + 1e-8)
+        values = torch.stack(values)
+        log_probs = torch.stack(log_probs)
+        entropies = torch.stack(entropies)
+
+        advantage = returns - values.detach()
+        actor_loss  = -(log_probs * advantage).mean()
+        critic_loss = F.mse_loss(values, returns)
+        entropy_bonus = entropies.mean()
+
+        loss = actor_loss + value_coef * critic_loss - entropy_coef * entropy_bonus
+        opt.zero_grad(); loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
+        opt.step()
+
+        if ep % 20 == 0:
+            print(f"ep {ep:03d}  return {total:.1f}  loss {loss.item():.3f}")
+    env.close()
+    return model`,
+
+    'ppo-trpo': `import gymnasium as gym
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.distributions import Categorical
+
+class ActorCritic(nn.Module):
+    def __init__(self, obs_dim, n_actions):
+        super().__init__()
+        self.shared = nn.Sequential(
+            nn.Linear(obs_dim, 64), nn.Tanh(),
+            nn.Linear(64, 64),      nn.Tanh(),
+        )
+        self.actor  = nn.Linear(64, n_actions)
+        self.critic = nn.Linear(64, 1)
+    def forward(self, x):
+        h = self.shared(x)
+        return self.actor(h), self.critic(h).squeeze(-1)
+
+def compute_gae(rewards, values, dones, gamma=0.99, lam=0.95):
+    adv = torch.zeros_like(rewards)
+    last = 0.0
+    for t in reversed(range(len(rewards))):
+        nonterminal = 1.0 - dones[t]
+        next_val = values[t + 1] if t + 1 < len(values) else 0.0
+        delta = rewards[t] + gamma * next_val * nonterminal - values[t]
+        last = delta + gamma * lam * nonterminal * last
+        adv[t] = last
+    return adv
+
+def collect_rollout(env, model, steps=2048):
+    obs, _ = env.reset()
+    data = {"obs": [], "actions": [], "logp": [],
+            "rewards": [], "dones": [], "values": []}
+    ep_returns, ep_return = [], 0.0
+
+    for _ in range(steps):
+        obs_t = torch.tensor(obs, dtype=torch.float32)
+        with torch.no_grad():
+            logits, value = model(obs_t)
+        dist = Categorical(logits=logits)
+        a = dist.sample()
+
+        next_obs, r, term, trunc, _ = env.step(a.item())
+        done = term or trunc
+        data["obs"].append(obs_t)
+        data["actions"].append(a)
+        data["logp"].append(dist.log_prob(a))
+        data["rewards"].append(r)
+        data["dones"].append(float(done))
+        data["values"].append(value)
+        ep_return += r
+        obs = next_obs
+        if done:
+            ep_returns.append(ep_return)
+            ep_return = 0.0
+            obs, _ = env.reset()
+
+    return {
+        "obs":     torch.stack(data["obs"]),
+        "actions": torch.stack(data["actions"]),
+        "logp":    torch.stack(data["logp"]).detach(),
+        "rewards": torch.tensor(data["rewards"], dtype=torch.float32),
+        "dones":   torch.tensor(data["dones"],   dtype=torch.float32),
+        "values":  torch.stack(data["values"]).detach(),
+    }, ep_returns
+
+def ppo_update(model, opt, batch, clip=0.2, epochs=10, minibatch=64,
+               value_coef=0.5, entropy_coef=0.01):
+    adv = compute_gae(batch["rewards"], batch["values"], batch["dones"])
+    returns = adv + batch["values"]
+    adv = (adv - adv.mean()) / (adv.std() + 1e-8)
+
+    N = len(batch["obs"])
+    idx = torch.arange(N)
+    for _ in range(epochs):
+        perm = idx[torch.randperm(N)]
+        for s in range(0, N, minibatch):
+            m = perm[s:s + minibatch]
+            logits, values = model(batch["obs"][m])
+            dist = Categorical(logits=logits)
+            new_logp = dist.log_prob(batch["actions"][m])
+            ratio = (new_logp - batch["logp"][m]).exp()
+            unclipped = ratio * adv[m]
+            clipped = ratio.clamp(1 - clip, 1 + clip) * adv[m]
+            policy_loss = -torch.min(unclipped, clipped).mean()
+            value_loss  = F.mse_loss(values, returns[m])
+            entropy     = dist.entropy().mean()
+            loss = policy_loss + value_coef * value_loss - entropy_coef * entropy
+            opt.zero_grad(); loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
+            opt.step()
+
+def train_ppo(env_name="CartPole-v1", iterations=50):
+    env = gym.make(env_name)
+    model = ActorCritic(env.observation_space.shape[0], env.action_space.n)
+    opt = torch.optim.Adam(model.parameters(), lr=3e-4)
+    for i in range(iterations):
+        batch, rets = collect_rollout(env, model, steps=1024)
+        ppo_update(model, opt, batch)
+        if rets:
+            print(f"iter {i:02d}  avg return {sum(rets)/len(rets):.1f}")
+    env.close()
+    return model`,
+
+    'model-based-rl': `import torch
+import torch.nn as nn
+
+# =====================================================
+# 1. Probabilistic dynamics ensemble
+# =====================================================
+class DynamicsModel(nn.Module):
+    def __init__(self, s_dim, a_dim, hidden=256):
+        super().__init__()
+        self.trunk = nn.Sequential(
+            nn.Linear(s_dim + a_dim, hidden), nn.SiLU(),
+            nn.Linear(hidden, hidden),        nn.SiLU(),
+        )
+        self.mean = nn.Linear(hidden, s_dim)
+        self.logstd = nn.Linear(hidden, s_dim)
+    def forward(self, s, a):
+        h = self.trunk(torch.cat([s, a], dim=-1))
+        mean = s + self.mean(h)                          # residual
+        logstd = self.logstd(h).clamp(-5, 2)
+        return mean, logstd
+
+class DynamicsEnsemble(nn.Module):
+    def __init__(self, s_dim, a_dim, n_models=5):
+        super().__init__()
+        self.models = nn.ModuleList(
+            [DynamicsModel(s_dim, a_dim) for _ in range(n_models)]
+        )
+    def forward(self, s, a):
+        means, logstds = zip(*[m(s, a) for m in self.models])
+        return torch.stack(means), torch.stack(logstds)  # (n, B, s_dim)
+
+def nll_loss(mean, logstd, target):
+    inv_var = torch.exp(-2 * logstd)
+    return (((target - mean) ** 2) * inv_var + 2 * logstd).mean()
+
+# =====================================================
+# 2. Cross-Entropy Method (CEM) planner
+# =====================================================
+def cem_plan(ensemble, reward_fn, s0,
+             horizon=15, pop=256, elite=32, iters=5, a_dim=1):
+    device = s0.device
+    mu  = torch.zeros(horizon, a_dim, device=device)
+    std = torch.ones (horizon, a_dim, device=device)
+
+    for _ in range(iters):
+        actions = mu + std * torch.randn(pop, horizon, a_dim, device=device)
+        actions = actions.clamp(-1, 1)
+        s = s0.expand(pop, -1).clone()
+        total = torch.zeros(pop, device=device)
+        for t in range(horizon):
+            a = actions[:, t]
+            means, _ = ensemble(s, a)
+            # average across ensemble (simple; consider random-ensemble too)
+            s = means.mean(0)
+            total += reward_fn(s, a)
+        elite_idx = total.topk(elite).indices
+        elite_actions = actions[elite_idx]
+        mu  = elite_actions.mean(0)
+        std = elite_actions.std(0) + 1e-6
+
+    return mu[0]  # best first action
+
+# =====================================================
+# 3. Dyna-style loop sketch
+# =====================================================
+def dyna_step(ensemble, policy, env, opt_dyn,
+              real_buffer, planning_horizon=5):
+    # Train dynamics from real transitions
+    s, a, s_next = real_buffer.sample_batch()
+    means, logstds = ensemble(s, a)
+    loss = sum(nll_loss(means[i], logstds[i], s_next) for i in range(len(ensemble.models)))
+    opt_dyn.zero_grad(); loss.backward(); opt_dyn.step()
+
+    # Generate imagined rollouts from the ensemble
+    # ... use them to update 'policy' via your favorite model-free algorithm
+    return loss.item()`,
+
+    'word-embeddings': `import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# =====================================================
+# 1. Skip-Gram with negative sampling (Word2Vec)
+# =====================================================
+class SkipGram(nn.Module):
+    def __init__(self, vocab_size, embed_dim=128):
+        super().__init__()
+        self.in_embed  = nn.Embedding(vocab_size, embed_dim)
+        self.out_embed = nn.Embedding(vocab_size, embed_dim)
+
+    def forward(self, center, context, neg):
+        """center: (B,)  context: (B,)  neg: (B, K)"""
+        c = self.in_embed(center)                     # (B, D)
+        ctx = self.out_embed(context)                 # (B, D)
+        neg_v = self.out_embed(neg)                   # (B, K, D)
+
+        pos_score = (c * ctx).sum(dim=-1)
+        neg_score = torch.bmm(neg_v, c.unsqueeze(-1)).squeeze(-1)
+
+        loss = -(F.logsigmoid(pos_score).mean()
+                 + F.logsigmoid(-neg_score).mean())
+        return loss
+
+# =====================================================
+# 2. Loading pretrained embeddings (GloVe-style)
+# =====================================================
+def load_pretrained(vocab, path, dim=100):
+    embed = nn.Embedding(len(vocab), dim)
+    embed.weight.data.uniform_(-0.1, 0.1)
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            parts = line.rstrip().split(" ")
+            word, vec = parts[0], parts[1:]
+            if word in vocab and len(vec) == dim:
+                embed.weight.data[vocab[word]] = torch.tensor(
+                    [float(v) for v in vec]
+                )
+    return embed
+
+# =====================================================
+# 3. Classifier head on top of embeddings
+# =====================================================
+class TextCNN(nn.Module):
+    def __init__(self, vocab_size, num_classes, embed_dim=128):
+        super().__init__()
+        self.embed = nn.Embedding(vocab_size, embed_dim, padding_idx=0)
+        self.convs = nn.ModuleList([
+            nn.Conv1d(embed_dim, 64, kernel_size=k, padding=k // 2)
+            for k in (3, 4, 5)
+        ])
+        self.fc = nn.Linear(64 * 3, num_classes)
+    def forward(self, tokens):
+        x = self.embed(tokens).transpose(1, 2)        # (B, D, T)
+        pooled = [F.relu(conv(x)).max(dim=2).values for conv in self.convs]
+        return self.fc(torch.cat(pooled, dim=1))
+
+# Smoke-test
+model = TextCNN(vocab_size=5000, num_classes=4)
+print(model(torch.randint(0, 5000, (8, 40))).shape)`,
+
+    'seq2seq': `import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# =====================================================
+# 1. Transformer-based Seq2Seq
+# =====================================================
+class Seq2SeqTransformer(nn.Module):
+    def __init__(self, src_vocab, tgt_vocab, d_model=256, nhead=8,
+                 num_enc=3, num_dec=3, max_len=512, pad_idx=0):
+        super().__init__()
+        self.pad_idx = pad_idx
+        self.src_embed = nn.Embedding(src_vocab, d_model, padding_idx=pad_idx)
+        self.tgt_embed = nn.Embedding(tgt_vocab, d_model, padding_idx=pad_idx)
+        self.pos = nn.Embedding(max_len, d_model)
+        self.transformer = nn.Transformer(
+            d_model=d_model, nhead=nhead,
+            num_encoder_layers=num_enc, num_decoder_layers=num_dec,
+            dim_feedforward=4 * d_model, dropout=0.1,
+            batch_first=True, norm_first=True,
+        )
+        self.out = nn.Linear(d_model, tgt_vocab)
+
+    def _embed(self, tokens, embedder):
+        B, T = tokens.shape
+        pos = torch.arange(T, device=tokens.device).unsqueeze(0).expand(B, T)
+        return embedder(tokens) + self.pos(pos)
+
+    def forward(self, src, tgt):
+        src_pad = src == self.pad_idx
+        tgt_pad = tgt == self.pad_idx
+        tgt_mask = nn.Transformer.generate_square_subsequent_mask(
+            tgt.size(1)).to(src.device)
+
+        memory = self.transformer.encoder(
+            self._embed(src, self.src_embed),
+            src_key_padding_mask=src_pad,
+        )
+        out = self.transformer.decoder(
+            self._embed(tgt, self.tgt_embed), memory,
+            tgt_mask=tgt_mask,
+            tgt_key_padding_mask=tgt_pad,
+            memory_key_padding_mask=src_pad,
+        )
+        return self.out(out)
+
+# =====================================================
+# 2. Greedy / beam-search decoding
+# =====================================================
+@torch.no_grad()
+def greedy_decode(model, src, bos=1, eos=2, max_len=64):
+    model.eval()
+    ys = torch.full((src.size(0), 1), bos, dtype=torch.long, device=src.device)
+    for _ in range(max_len - 1):
+        logits = model(src, ys)
+        next_tok = logits[:, -1].argmax(-1, keepdim=True)
+        ys = torch.cat([ys, next_tok], dim=1)
+        if (next_tok == eos).all(): break
+    return ys
+
+# =====================================================
+# 3. Training step with teacher forcing
+# =====================================================
+def train_step(model, opt, src, tgt, pad_idx=0):
+    tgt_in  = tgt[:, :-1]        # teacher forcing input
+    tgt_out = tgt[:, 1:]         # target to predict
+    logits = model(src, tgt_in)
+    loss = F.cross_entropy(
+        logits.reshape(-1, logits.size(-1)),
+        tgt_out.reshape(-1),
+        ignore_index=pad_idx,
+    )
+    opt.zero_grad(); loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+    opt.step()
+    return loss.item()`,
+
+    'bert-transformers': `# pip install transformers datasets
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from transformers import (
+    AutoTokenizer, AutoModelForSequenceClassification,
+    get_linear_schedule_with_warmup,
+)
+
+MODEL_NAME = "distilbert-base-uncased"
+NUM_LABELS = 2
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForSequenceClassification.from_pretrained(
+    MODEL_NAME, num_labels=NUM_LABELS,
+).to(device)
+
+# ============ Tokenization helper ============
+def collate(batch):
+    texts  = [b["text"]  for b in batch]
+    labels = [b["label"] for b in batch]
+    enc = tokenizer(texts, padding=True, truncation=True,
+                    max_length=128, return_tensors="pt")
+    enc["labels"] = torch.tensor(labels, dtype=torch.long)
+    return {k: v.to(device) for k, v in enc.items()}
+
+# ============ Training loop ============
+def train(train_ds, val_ds, epochs=3, lr=2e-5, batch=16):
+    train_loader = DataLoader(train_ds, batch_size=batch,
+                              shuffle=True, collate_fn=collate)
+    val_loader   = DataLoader(val_ds, batch_size=batch,
+                              collate_fn=collate)
+
+    no_decay = ["bias", "LayerNorm.weight"]
+    grouped = [
+        {"params": [p for n, p in model.named_parameters()
+                    if not any(nd in n for nd in no_decay)],
+         "weight_decay": 0.01},
+        {"params": [p for n, p in model.named_parameters()
+                    if any(nd in n for nd in no_decay)],
+         "weight_decay": 0.0},
+    ]
+    opt = torch.optim.AdamW(grouped, lr=lr)
+    total_steps = len(train_loader) * epochs
+    sched = get_linear_schedule_with_warmup(
+        opt, int(0.1 * total_steps), total_steps,
+    )
+
+    for epoch in range(epochs):
+        model.train()
+        for batch in train_loader:
+            out = model(**batch)
+            opt.zero_grad()
+            out.loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            opt.step(); sched.step()
+
+        # Validation
+        model.eval()
+        correct = total = 0
+        with torch.no_grad():
+            for batch in val_loader:
+                logits = model(**batch).logits
+                preds = logits.argmax(-1)
+                correct += (preds == batch["labels"]).sum().item()
+                total += preds.size(0)
+        print(f"epoch {epoch}  val acc {correct / total:.4f}")
+
+    return model
+
+# ============ Inference ============
+@torch.no_grad()
+def predict(texts):
+    model.eval()
+    enc = tokenizer(texts, padding=True, truncation=True,
+                    max_length=128, return_tensors="pt").to(device)
+    return model(**enc).logits.argmax(-1).tolist()`,
   }
   
   return fullExamples[topicId] || getCodeExample(topicId)
