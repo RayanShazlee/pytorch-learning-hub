@@ -10,6 +10,9 @@ const projectRoot = process.env.PROJECT_ROOT || import.meta.dirname
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Use a relative base so the built site works both on GitHub Pages
+  // (served from /pytorch-learning-hub/) and on any other static host.
+  base: './',
   plugins: [
     react(),
     tailwindcss(),
