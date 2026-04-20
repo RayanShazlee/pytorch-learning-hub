@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft, CheckCircle, Code, Play, BookOpen } from '@phosphor-icons/react'
+import { ArrowLeft, CheckCircle, Code, Play, BookOpen, Lightbulb, Target, Sparkle } from '@phosphor-icons/react'
 import type { DocTopic } from '@/lib/docs'
 import { TensorVisualizer } from '@/components/TensorVisualizer'
 import { NeuralNetworkVisualizer } from '@/components/NeuralNetworkVisualizer'
@@ -17,6 +17,36 @@ import { AIBrainVisual } from '@/components/visuals/AIBrainVisual'
 import { LayersFlowVisual } from '@/components/visuals/LayersFlowVisual'
 import { ActivationFunctionVisual } from '@/components/visuals/ActivationFunctionVisual'
 import { TensorOperationVisual } from '@/components/visuals/TensorOperationVisual'
+import { BackpropVisualizer } from '@/components/visuals/BackpropVisualizer'
+import { OptimizerComparisonVisual } from '@/components/visuals/OptimizerComparisonVisual'
+import { CNNFeatureMapVisual } from '@/components/visuals/CNNFeatureMapVisual'
+import { AttentionHeatmapVisual } from '@/components/visuals/AttentionHeatmapVisual'
+import { EmbeddingSpaceVisual } from '@/components/visuals/EmbeddingSpaceVisual'
+import { MatMulStepVisual } from '@/components/visuals/MatMulStepVisual'
+import { ConvolutionStepVisual } from '@/components/visuals/ConvolutionStepVisual'
+import { GradientDescentStepVisual } from '@/components/visuals/GradientDescentStepVisual'
+import { AttentionStepVisual } from '@/components/visuals/AttentionStepVisual'
+import { SoftmaxStepVisual } from '@/components/visuals/SoftmaxStepVisual'
+import { RNNStepVisual } from '@/components/visuals/RNNStepVisual'
+import { DiffusionStepVisual } from '@/components/visuals/DiffusionStepVisual'
+import {
+  CompileVisual,
+  HooksVisual,
+  GradCheckpointVisual,
+  AMPVisual,
+  DDPVisual,
+  FSDPVisual,
+  ProfilerVisual,
+  ReparamVisual,
+  VmapVisual,
+  InitVisual,
+  QuantizationVisual,
+  PruneVisual,
+  CustomAutogradVisual,
+} from '@/components/visuals/AdvancedConceptVisuals'
+import { VisualExplainer } from '@/components/visuals/VisualExplainer'
+import { PythonPlayground } from '@/components/PythonPlayground'
+import { HoverableCode } from '@/components/HoverableCode'
 import { cn } from '@/lib/utils'
 
 interface DocDetailProps {
@@ -30,96 +60,340 @@ export function DocDetail({ topic, onBack, onComplete, isCompleted }: DocDetailP
   const [activeTab, setActiveTab] = useState('concepts')
   
   const renderVisualization = () => {
+    // Small helpers so each visual is paired with its rich "field guide".
+    const MatMul = () => <VisualExplainer visualKey="matmul"><MatMulStepVisual /></VisualExplainer>
+    const Conv = () => <VisualExplainer visualKey="convolution"><ConvolutionStepVisual /></VisualExplainer>
+    const GradDescent = () => <VisualExplainer visualKey="gradientDescent"><GradientDescentStepVisual /></VisualExplainer>
+    const Attn = () => <VisualExplainer visualKey="attention"><AttentionStepVisual /></VisualExplainer>
+    const AttnHeat = () => <VisualExplainer visualKey="attentionHeatmap"><AttentionHeatmapVisual /></VisualExplainer>
+    const Soft = () => <VisualExplainer visualKey="softmax"><SoftmaxStepVisual /></VisualExplainer>
+    const Rnn = () => <VisualExplainer visualKey="rnn"><RNNStepVisual /></VisualExplainer>
+    const Diff = () => <VisualExplainer visualKey="diffusion"><DiffusionStepVisual /></VisualExplainer>
+    const Cnn = () => <VisualExplainer visualKey="cnnFeatureMap"><CNNFeatureMapVisual /></VisualExplainer>
+    const Emb = () => <VisualExplainer visualKey="embeddingSpace"><EmbeddingSpaceVisual /></VisualExplainer>
+    const Act = () => <VisualExplainer visualKey="activationFunction"><ActivationFunctionVisual /></VisualExplainer>
+    const Back = () => <VisualExplainer visualKey="backprop"><BackpropVisualizer /></VisualExplainer>
+    const Opt = () => <VisualExplainer visualKey="optimizer"><OptimizerComparisonVisual /></VisualExplainer>
+    const Layers = () => <VisualExplainer visualKey="layersFlow"><LayersFlowVisual /></VisualExplainer>
+    const Tensor = (title: string, description: string) => (
+      <VisualExplainer visualKey="tensor"><TensorVisualizer title={title} description={description} /></VisualExplainer>
+    )
+    const TensorOp = () => <VisualExplainer visualKey="tensor"><TensorOperationVisual /></VisualExplainer>
+    const Train = () => <VisualExplainer visualKey="trainingLoop"><TrainingSimulator /></VisualExplainer>
+    const Net = () => <VisualExplainer visualKey="layersFlow"><NeuralNetworkVisualizer /></VisualExplainer>
+    const Gan = () => <VisualExplainer visualKey="gan"><GANVisualizer /></VisualExplainer>
+    const Rl = () => <VisualExplainer visualKey="rl"><RLVisualizer /></VisualExplainer>
+    const Cv = () => <VisualExplainer visualKey="classification"><CVVisualizer /></VisualExplainer>
+    const Brain = () => <VisualExplainer visualKey="decorative"><AIBrainVisual /></VisualExplainer>
+    const Logo = () => <VisualExplainer visualKey="decorative"><PyTorchLogoVisual /></VisualExplainer>
+
     switch (topic.id) {
       case 'pytorch-intro':
         return (
           <div className="space-y-6">
-            <PyTorchLogoVisual />
-            <AIBrainVisual />
+            <Logo />
+            <MatMul />
+            <Brain />
           </div>
         )
       case 'tensor-fundamentals':
         return (
           <div className="space-y-6">
-            <TensorVisualizer title="Tensor Operations" description="Experiment with tensor dimensions and operations" />
-            <TensorOperationVisual />
+            {Tensor('Tensor Operations', 'Experiment with tensor dimensions and operations')}
+            <MatMul />
+            <TensorOp />
           </div>
         )
       case 'tensor-broadcasting':
         return (
           <div className="space-y-6">
-            <TensorVisualizer title="Broadcasting Rules" description="See how tensors of different shapes combine" />
-            <TensorOperationVisual />
+            {Tensor('Broadcasting Rules', 'See how tensors of different shapes combine')}
+            <MatMul />
+            <TensorOp />
           </div>
         )
       case 'autograd-basics':
       case 'custom-autograd':
         return (
           <div className="space-y-6">
-            <LayersFlowVisual />
-            <AIBrainVisual />
+            <GradDescent />
+            <Back />
+            <Layers />
           </div>
         )
       case 'nn-module':
+        return (
+          <div className="space-y-6">
+            <Net />
+            <MatMul />
+            <Act />
+            <Soft />
+          </div>
+        )
       case 'cnn-architectures':
+        return (
+          <div className="space-y-6">
+            <Conv />
+            <Cnn />
+            <Net />
+          </div>
+        )
       case 'rnn-lstm':
+        return (
+          <div className="space-y-6">
+            <Rnn />
+            <Net />
+            <Layers />
+          </div>
+        )
       case 'transformers':
         return (
           <div className="space-y-6">
-            <NeuralNetworkVisualizer />
-            <ActivationFunctionVisual />
+            <Attn />
+            <AttnHeat />
+            <MatMul />
+            <Soft />
+            <Net />
           </div>
         )
       case 'loss-functions':
+        return (
+          <div className="space-y-6">
+            <Soft />
+            <GradDescent />
+            <Train />
+            <Back />
+          </div>
+        )
       case 'training-loop':
+        return (
+          <div className="space-y-6">
+            <Train />
+            <GradDescent />
+            <Back />
+          </div>
+        )
       case 'optimizers':
         return (
           <div className="space-y-6">
-            <TrainingSimulator />
-            <ActivationFunctionVisual />
+            <Opt />
+            <GradDescent />
+            <Train />
           </div>
         )
       case 'distributed-training':
+        return (
+          <div className="space-y-6">
+            <Layers />
+            <Net />
+            <Train />
+          </div>
+        )
       case 'model-optimization':
         return (
           <div className="space-y-6">
-            <LayersFlowVisual />
-            <NeuralNetworkVisualizer />
+            <Layers />
+            <MatMul />
+            <Net />
           </div>
         )
       case 'gan-basics':
       case 'dcgan':
       case 'stylegan':
       case 'wgan':
+        return (
+          <div className="space-y-6">
+            <Gan />
+            <Conv />
+            <GradDescent />
+          </div>
+        )
       case 'diffusion-models':
-        return <GANVisualizer />
+        return (
+          <div className="space-y-6">
+            <Diff />
+            <Gan />
+            <GradDescent />
+          </div>
+        )
       case 'rl-basics':
+        return (
+          <div className="space-y-6">
+            <Rl />
+            <Soft />
+            <GradDescent />
+          </div>
+        )
       case 'dqn':
+        return (
+          <div className="space-y-6">
+            <Rl />
+            <Net />
+            <GradDescent />
+          </div>
+        )
       case 'policy-gradient':
       case 'ppo-trpo':
+        return (
+          <div className="space-y-6">
+            <Rl />
+            <Soft />
+            <GradDescent />
+          </div>
+        )
       case 'model-based-rl':
-        return <RLVisualizer />
+        return (
+          <div className="space-y-6">
+            <Rl />
+            <Layers />
+            <Net />
+          </div>
+        )
       case 'cv-fundamentals':
+        return (
+          <div className="space-y-6">
+            <Conv />
+            <Cnn />
+            <Cv />
+          </div>
+        )
       case 'object-detection':
       case 'image-segmentation':
       case 'pose-estimation':
-        return <CVVisualizer />
+        return (
+          <div className="space-y-6">
+            <Cv />
+            <Conv />
+            <Cnn />
+          </div>
+        )
       case 'word-embeddings':
+        return (
+          <div className="space-y-6">
+            <Emb />
+            <Soft />
+            <Net />
+          </div>
+        )
       case 'seq2seq':
+        return (
+          <div className="space-y-6">
+            <Rnn />
+            <Attn />
+            <AttnHeat />
+            <Layers />
+          </div>
+        )
       case 'bert-transformers':
         return (
           <div className="space-y-6">
-            <NeuralNetworkVisualizer />
-            <LayersFlowVisual />
+            <Attn />
+            <AttnHeat />
+            <Soft />
+            <Emb />
+          </div>
+        )
+      // ─── Phase 2 advanced concepts ───
+      case 'torch-compile':
+        return (
+          <div className="space-y-6">
+            <VisualExplainer visualKey="compile"><CompileVisual /></VisualExplainer>
+            <Layers />
+          </div>
+        )
+      case 'hooks':
+        return (
+          <div className="space-y-6">
+            <VisualExplainer visualKey="hooks"><HooksVisual /></VisualExplainer>
+            <Back />
+          </div>
+        )
+      case 'gradient-checkpointing':
+        return (
+          <div className="space-y-6">
+            <VisualExplainer visualKey="gradientCheckpointing"><GradCheckpointVisual /></VisualExplainer>
+            <Back />
+            <Layers />
+          </div>
+        )
+      case 'mixed-precision':
+        return (
+          <div className="space-y-6">
+            <VisualExplainer visualKey="amp"><AMPVisual /></VisualExplainer>
+            <GradDescent />
+          </div>
+        )
+      case 'ddp':
+        return (
+          <div className="space-y-6">
+            <VisualExplainer visualKey="ddp"><DDPVisual /></VisualExplainer>
+            <Layers />
+          </div>
+        )
+      case 'fsdp':
+        return (
+          <div className="space-y-6">
+            <VisualExplainer visualKey="fsdp"><FSDPVisual /></VisualExplainer>
+            <VisualExplainer visualKey="ddp"><DDPVisual /></VisualExplainer>
+          </div>
+        )
+      case 'profiler':
+        return (
+          <div className="space-y-6">
+            <VisualExplainer visualKey="profiler"><ProfilerVisual /></VisualExplainer>
+            <Train />
+          </div>
+        )
+      case 'distributions-reparam':
+        return (
+          <div className="space-y-6">
+            <VisualExplainer visualKey="reparam"><ReparamVisual /></VisualExplainer>
+            <Back />
+          </div>
+        )
+      case 'vmap-func':
+        return (
+          <div className="space-y-6">
+            <VisualExplainer visualKey="vmap"><VmapVisual /></VisualExplainer>
+            <MatMul />
+          </div>
+        )
+      case 'weight-init':
+        return (
+          <div className="space-y-6">
+            <VisualExplainer visualKey="weightInit"><InitVisual /></VisualExplainer>
+            <Act />
+          </div>
+        )
+      case 'quantization':
+        return (
+          <div className="space-y-6">
+            <VisualExplainer visualKey="quantization"><QuantizationVisual /></VisualExplainer>
+            <Layers />
+          </div>
+        )
+      case 'pruning':
+        return (
+          <div className="space-y-6">
+            <VisualExplainer visualKey="pruning"><PruneVisual /></VisualExplainer>
+            <Layers />
+          </div>
+        )
+      case 'custom-autograd':
+        return (
+          <div className="space-y-6">
+            <VisualExplainer visualKey="customAutograd"><CustomAutogradVisual /></VisualExplainer>
+            <Back />
+            <GradDescent />
           </div>
         )
       default:
+        // Graceful fallback: every topic gets SOMETHING useful to stare at.
         return (
-          <div className="flex items-center justify-center h-64 text-muted-foreground">
-            <div className="text-center">
-              <Code size={48} weight="duotone" className="mx-auto mb-4 opacity-50" />
-              <p>Interactive visualization coming soon</p>
-            </div>
+          <div className="space-y-6">
+            <Brain />
+            <Layers />
+            <MatMul />
           </div>
         )
     }
@@ -167,10 +441,16 @@ export function DocDetail({ topic, onBack, onComplete, isCompleted }: DocDetailP
           <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-primary via-violet to-cyan bg-clip-text text-transparent">
             Code Example
           </h2>
-          <Card className="p-6 bg-gradient-to-br from-card to-muted/20 border-2">
-            <pre className="overflow-x-auto">
-              <code className="text-sm">{getCodeExample(topic.id)}</code>
-            </pre>
+          <Card className="p-4 bg-gradient-to-br from-card to-muted/20 border-2">
+            <p className="text-xs text-muted-foreground mb-3">
+              Hover any coloured symbol below for an inline explanation — then jump to the
+              <strong className="mx-1">Code</strong> tab to actually run it.
+            </p>
+            <HoverableCode
+              code={getCodeExample(topic.id)}
+              title="example.py"
+              annotations={getCodeAnnotations(topic.id)}
+            />
           </Card>
         </section>
 
@@ -280,19 +560,33 @@ export function DocDetail({ topic, onBack, onComplete, isCompleted }: DocDetailP
 
                 <TabsContent value="interactive" className="mt-0">
                   <Card className="p-6 min-h-[600px]">
+                    <InteractiveGuide topicId={topic.id} />
                     {renderVisualization()}
                   </Card>
                 </TabsContent>
 
                 <TabsContent value="code" className="mt-0">
-                  <Card className="p-6 bg-gradient-to-br from-card to-muted/20">
-                    <h3 className="text-xl font-bold mb-4">Complete Implementation</h3>
-                    <ScrollArea className="h-[600px]">
-                      <pre className="text-sm">
-                        <code>{getFullCodeExample(topic.id)}</code>
-                      </pre>
-                    </ScrollArea>
-                  </Card>
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    <Card className="p-4 bg-gradient-to-br from-card to-muted/20">
+                      <div className="flex items-baseline justify-between mb-3">
+                        <h3 className="text-lg font-bold">Complete Implementation</h3>
+                        <span className="text-[11px] text-muted-foreground">hover symbols for explanations</span>
+                      </div>
+                      <HoverableCode
+                        code={getFullCodeExample(topic.id)}
+                        title="full_implementation.py"
+                        className="max-h-[640px]"
+                        annotations={getCodeAnnotations(topic.id)}
+                      />
+                    </Card>
+                    <Card className="p-4 bg-gradient-to-br from-card to-muted/20">
+                      <div className="flex items-baseline justify-between mb-3">
+                        <h3 className="text-lg font-bold">Try it yourself</h3>
+                        <span className="text-[11px] text-muted-foreground">runs in your browser via Pyodide</span>
+                      </div>
+                      <PythonPlayground initialCode={getRunnableExample(topic.id)} />
+                    </Card>
+                  </div>
                 </TabsContent>
               </motion.div>
             </AnimatePresence>
@@ -336,6 +630,18 @@ function getTopicOverview(topicId: string): string {
     'word-embeddings': 'Word embeddings represent words as dense vectors that capture semantic relationships. Techniques like Word2Vec and GloVe learn embeddings where similar words have similar vectors, enabling powerful language understanding.',
     'seq2seq': 'Sequence-to-sequence models map input sequences to output sequences of potentially different lengths. With attention mechanisms, they excel at tasks like machine translation, summarization, and conversational AI.',
     'bert-transformers': 'BERT and modern transformer models use bidirectional self-attention and pre-training on massive datasets. Fine-tuning these models on downstream tasks achieves state-of-the-art results across NLP with minimal task-specific architecture.',
+    'torch-compile': 'torch.compile is PyTorch 2.x\'s JIT compiler. It traces your model with TorchDynamo, lowers the graph through AOTAutograd, and generates fused GPU kernels via TorchInductor — typically a 20–50% speedup with a one-line change.',
+    'hooks': 'Hooks let you attach callbacks to any nn.Module or Tensor — observing or modifying activations and gradients without editing the model. They power feature extraction, gradient debugging, Grad-CAM, and on-the-fly instrumentation.',
+    'gradient-checkpointing': 'Gradient checkpointing trades compute for memory: instead of saving every intermediate activation for backward, it re-runs forward on selected segments. A ~30% slowdown buys you square-root memory savings — essential for fitting large models.',
+    'mixed-precision': 'Automatic Mixed Precision (AMP) runs forward in fp16/bf16 while keeping master weights in fp32. autocast picks the safe dtype per op and GradScaler prevents underflow — typically 2× faster training with no accuracy loss on modern GPUs.',
+    'ddp': 'DistributedDataParallel runs one process per GPU, each with a full model copy. After each backward, ring all-reduce averages gradients across all workers, so every replica steps with the same gradient and stays in sync.',
+    'fsdp': 'Fully Sharded Data Parallel shards parameters, gradients, and optimizer state across ranks instead of replicating them. Each layer is gathered just-in-time for forward/backward, then resharded — letting you train models far larger than fit on a single GPU.',
+    'profiler': 'torch.profiler captures CPU and CUDA timing, kernel launches, memory usage, and operator stacks. Combined with the TensorBoard plugin or chrome://tracing, it pinpoints which ops, kernels, or data-loader stalls dominate your step time.',
+    'distributions-reparam': 'The reparameterization trick rewrites a random sample as a deterministic function of the parameters and a noise variable (e.g. z = μ + σ·ε). This makes sampling differentiable, which is the engine behind VAEs and many policy-gradient variance-reduction tricks.',
+    'vmap-func': 'torch.func (formerly functorch) brings JAX-style transforms to PyTorch: vmap auto-batches a function written for one sample, and grad/jacrev/jacfwd compute gradients and Jacobians functionally — without manual loops or stateful modules.',
+    'weight-init': 'Weight initialization sets the starting point for optimization. Schemes like Kaiming (He) and Xavier (Glorot) keep activation and gradient variance roughly constant across layers, preventing the vanishing/exploding signals that doom poorly-initialized deep networks.',
+    'quantization': 'Quantization replaces fp32 weights and activations with int8 (or lower) representations. Done well — via post-training quantization or quantization-aware training — it shrinks models 4× and accelerates inference 2–4× with negligible accuracy loss.',
+    'pruning': 'Pruning zeros out a fraction of the weights — magnitude-based, structured, or learned — then optionally fine-tunes. Combined with sparse kernels or quantization it can dramatically reduce model size and inference cost.',
   }
   return overviews[topicId] || 'Comprehensive guide to this PyTorch topic.'
 }
@@ -558,6 +864,90 @@ function getKeyConcepts(topicId: string) {
       { title: 'Tokenization (BPE / WordPiece)', description: 'Subword tokenizers balance vocabulary size and out-of-vocabulary robustness, representing any string as a sequence of known pieces.' },
       { title: 'Hugging Face Transformers', description: 'The transformers library gives a unified API (AutoModel, AutoTokenizer, Trainer) to thousands of pretrained checkpoints — the de facto standard.' },
       { title: 'Parameter-Efficient Fine-Tuning', description: 'LoRA, adapters and prompt tuning update only a small number of extra parameters, making huge models fine-tunable on commodity hardware.' },
+    ],
+    'torch-compile': [
+      { title: 'TorchDynamo', description: 'A Python-level frame evaluation that traces your model into an FX graph by hooking CPython bytecode — handles real Python control flow, falling back gracefully on unsupported constructs.' },
+      { title: 'AOTAutograd', description: 'Captures both the forward and the backward graph ahead-of-time, so the backend can fuse and optimize them together rather than interpreting autograd at runtime.' },
+      { title: 'TorchInductor Backend', description: 'The default backend lowers FX graphs to fused Triton kernels on GPU and C++/OpenMP on CPU, achieving large speedups on attention, conv, and pointwise-heavy workloads.' },
+      { title: 'Modes & Recompilation', description: 'mode="reduce-overhead" uses CUDA Graphs; mode="max-autotune" tunes kernels exhaustively. Each new input shape or dtype triggers a recompile — keep shapes stable to avoid cache misses.' },
+      { title: 'Graph Breaks', description: 'Unsupported ops (data-dependent control flow, .item() in the hot path, third-party C extensions) cause graph breaks that fragment fusion. torch._dynamo.explain() shows where they happen.' },
+    ],
+    'hooks': [
+      { title: 'Forward Hooks', description: 'register_forward_hook(fn) fires after a module produces its output; register_forward_pre_hook(fn) fires just before. Both can read or replace the activation.' },
+      { title: 'Backward Hooks', description: 'register_full_backward_hook(fn) fires during backward with grad_input/grad_output, letting you log, clip, or modify gradients per layer without touching the loss.' },
+      { title: 'Tensor Hooks', description: 'tensor.register_hook(fn) attaches to a single tensor in the autograd graph — perfect for inspecting an intermediate activation\'s gradient.' },
+      { title: 'Removing Hooks', description: 'Every register_* call returns a handle with .remove(); forget to call it and your hook leaks across runs, accumulating memory and warping outputs.' },
+      { title: 'Use Cases', description: 'Feature extraction, Grad-CAM, gradient norm logging, activation statistics, debugging vanishing/exploding signals, and on-the-fly profiling — all without subclassing the model.' },
+    ],
+    'gradient-checkpointing': [
+      { title: 'Memory ↔ Compute Trade', description: 'Forward normally saves every activation for backward. Checkpointing discards them and recomputes a forward pass on each segment during backward — ~30% extra compute, square-root memory.' },
+      { title: 'torch.utils.checkpoint.checkpoint', description: 'Wrap any sub-function (or sequential block via checkpoint_sequential) and PyTorch handles the recompute automatically inside autograd.' },
+      { title: 'Where to Apply', description: 'Best on big homogeneous blocks: transformer layers, deep ResNet stages, U-Net encoders. Skip cheap ops — recomputing them isn\'t worth the bookkeeping.' },
+      { title: 'use_reentrant Flag', description: 'Set use_reentrant=False (the modern, recommended path) to play nicely with autograd features like inputs that don\'t require gradients.' },
+      { title: 'Combine With AMP & FSDP', description: 'Checkpointing stacks cleanly with mixed precision and FSDP — together they unlock 10B+ parameter training on a handful of GPUs.' },
+    ],
+    'mixed-precision': [
+      { title: 'autocast Context', description: 'with torch.autocast("cuda", dtype=torch.float16): wraps your forward; PyTorch picks fp16 for matmul/conv and keeps fp32 for reductions and softmax.' },
+      { title: 'GradScaler', description: 'fp16 gradients can underflow to zero. GradScaler multiplies the loss before backward and unscales before optimizer.step(), then dynamically adjusts the scale.' },
+      { title: 'fp16 vs bf16', description: 'bf16 has the same exponent range as fp32, so it doesn\'t need a GradScaler — preferred on Ampere+ GPUs and TPUs. fp16 has more precision but narrower range.' },
+      { title: 'Master Weights in fp32', description: 'The optimizer always keeps fp32 master weights; only the forward/backward run in low precision. This preserves long-term training stability.' },
+      { title: 'When It Helps Most', description: 'Big matmul/conv-heavy nets on Tensor Cores see ~2× speedup. Tiny nets or ones bottlenecked on data loading won\'t benefit much.' },
+    ],
+    'ddp': [
+      { title: 'One Process per GPU', description: 'torch.multiprocessing.spawn or torchrun launches N processes, each pinned to its own device with its own model replica — no GIL contention.' },
+      { title: 'Ring All-Reduce', description: 'After backward, gradients are bucketed and averaged across ranks via NCCL\'s ring all-reduce — bandwidth-optimal and overlapped with the rest of backward.' },
+      { title: 'DistributedSampler', description: 'Splits the dataset across ranks so every GPU sees a different shard each epoch. Call sampler.set_epoch(epoch) to reshuffle deterministically.' },
+      { title: 'Gradient Bucketing', description: 'DDP groups parameters into ~25MB buckets and fires the all-reduce as soon as a bucket\'s grads are ready, hiding communication behind backward compute.' },
+      { title: 'no_sync() & Accumulation', description: 'Use the no_sync() context manager between micro-batches to skip the all-reduce until you\'re ready for the real optimizer step — cheap gradient accumulation.' },
+    ],
+    'fsdp': [
+      { title: 'Sharding Parameters', description: 'Each rank only stores 1/N of the parameters, gradients, and optimizer state — memory drops from O(P) to O(P/N), unlocking models that don\'t fit on one GPU.' },
+      { title: 'All-Gather on Demand', description: 'Just before a layer\'s forward (and backward), FSDP all-gathers the full parameters, runs the op, then immediately reshards — peak memory is one layer, not the whole model.' },
+      { title: 'reduce-scatter for Grads', description: 'Instead of all-reducing then sharding, FSDP fuses both into a single reduce-scatter — gradients land already-sharded, halving comm volume vs naive DDP+ZeRO.' },
+      { title: 'Auto-Wrap Policies', description: 'size_based_auto_wrap_policy or transformer_auto_wrap_policy decides which submodules to shard. Per-layer wrapping is the sweet spot for transformers.' },
+      { title: 'Mixed Precision & Offload', description: 'FSDP composes with AMP, gradient checkpointing, and CPU offload — the combination is what powers modern 70B+ training on commodity clusters.' },
+    ],
+    'profiler': [
+      { title: 'with profile(...)', description: 'Wrap a few training steps in torch.profiler.profile; specify activities=[CPU, CUDA] and a schedule to skip warmup and capture only the steady state.' },
+      { title: 'Schedule', description: 'wait/warmup/active/repeat lets you skip the first N noisy steps then record M clean ones — essential for accurate measurements.' },
+      { title: 'TensorBoard Trace Viewer', description: 'tensorboard_trace_handler writes a trace.json the TensorBoard plugin renders as an interactive flame graph, surfacing kernel-level detail.' },
+      { title: 'Memory Profiling', description: 'profile_memory=True records every allocation; record_shapes=True groups ops by input shape to identify shape-dependent slowness.' },
+      { title: 'Common Findings', description: 'Most slow training falls into a few buckets: GPU starved by the data loader, tiny kernels not fused, .item()/.cpu() syncs in the hot path, or unnecessary host-device copies.' },
+    ],
+    'distributions-reparam': [
+      { title: 'Why Sampling Breaks Gradients', description: 'A raw sample z ~ N(μ, σ) is a non-differentiable function of μ and σ — autograd cannot push gradients through the random number generator.' },
+      { title: 'The Trick', description: 'Rewrite z = μ + σ · ε where ε ~ N(0, 1) is sampled independently. Now z is a differentiable function of μ and σ, and ∂z/∂μ, ∂z/∂σ exist.' },
+      { title: 'rsample vs sample', description: 'torch.distributions exposes rsample() for distributions that support reparameterization (Normal, MultivariateNormal, ...) and sample() for the rest.' },
+      { title: 'VAE Application', description: 'In a variational autoencoder the encoder outputs μ, log σ²; rsample() draws a latent z that the decoder reconstructs from — gradients flow end-to-end.' },
+      { title: 'When It Doesn\'t Apply', description: 'Discrete distributions (Categorical, Bernoulli) aren\'t reparameterizable — use Gumbel-Softmax for a continuous relaxation, or score-function (REINFORCE) gradients.' },
+    ],
+    'vmap-func': [
+      { title: 'Functional Style', description: 'torch.func.functional_call(model, params, args) lets you treat a stateful nn.Module as a pure function of its parameters — no hidden state, no in-place updates.' },
+      { title: 'vmap', description: 'vmap(fn)(batched_input) runs fn as if it were written for one sample and automatically vectorizes across the leading batch dim — no manual broadcasting.' },
+      { title: 'grad / jacrev / jacfwd', description: 'Composable transforms that compute gradients, reverse-mode Jacobians, and forward-mode Jacobians of any pure function — composable with each other and with vmap.' },
+      { title: 'Per-Sample Gradients', description: 'vmap(grad(loss_fn))(params, x, y) gives one gradient tensor per sample — historically painful in PyTorch, now a one-liner. Powers DP-SGD and influence functions.' },
+      { title: 'Limits', description: 'Functions with Python-level control flow that depends on tensor data, in-place ops, or random sampling outside the supported set won\'t vmap cleanly.' },
+    ],
+    'weight-init': [
+      { title: 'Why Initialization Matters', description: 'A bad init makes every layer\'s output explode or collapse to zero — gradients follow suit and training never starts. A good init keeps signal variance ≈ 1 across depth.' },
+      { title: 'Xavier / Glorot', description: 'Variance = 2/(fan_in + fan_out). Designed for symmetric activations like tanh and sigmoid; preserves variance in both forward and backward.' },
+      { title: 'Kaiming / He', description: 'Variance = 2/fan_in. Designed for ReLU-family activations which kill ~half the signal — the 2× compensates. The default for almost all modern conv/MLP nets.' },
+      { title: 'Orthogonal & Identity', description: 'Orthogonal initialization preserves norms exactly through linear layers — popular in RNNs and policy networks. Identity (or near-identity) is used in residual blocks for stable training of very deep nets.' },
+      { title: 'Special Cases', description: 'BatchNorm γ to 1, β to 0; biases to 0; LayerNorm γ to 1; embeddings to N(0, 0.02). The last residual block in a transformer is often zero-initialized so the model starts as the identity.' },
+    ],
+    'quantization': [
+      { title: 'Dynamic Quantization', description: 'torch.quantization.quantize_dynamic converts weights to int8 ahead of time and quantizes activations on the fly. Zero-config; great for LSTMs and Linear-heavy models.' },
+      { title: 'Static (Post-Training) Quantization', description: 'Calibrate with a few hundred representative inputs to learn activation scales, then convert the whole model. Best accuracy without retraining.' },
+      { title: 'Quantization-Aware Training (QAT)', description: 'Insert fake-quant nodes during training so the model learns weights that are robust to int8 rounding — recovers most of the accuracy lost by aggressive quantization.' },
+      { title: 'Per-Tensor vs Per-Channel', description: 'Per-channel scales (one per output channel of a conv/linear) are noticeably more accurate than a single per-tensor scale and cost almost nothing extra at inference.' },
+      { title: 'Backends & Targets', description: 'fbgemm for x86 servers, qnnpack for mobile/ARM, ExecuTorch / TensorRT / ONNX Runtime for production. Always benchmark on the real target device, not just the dev box.' },
+    ],
+    'pruning': [
+      { title: 'Magnitude Pruning', description: 'Zero out the smallest |w| weights. The simplest baseline and surprisingly competitive — especially with iterative pruning + fine-tuning.' },
+      { title: 'Unstructured vs Structured', description: 'Unstructured prunes individual weights (great compression, needs sparse kernels). Structured prunes whole channels/heads (lower compression, but actually faster on dense hardware).' },
+      { title: 'torch.nn.utils.prune', description: 'PyTorch ships pruning APIs (l1_unstructured, ln_structured, global_unstructured) that attach a mask buffer; the underlying weight is preserved for further fine-tuning.' },
+      { title: 'Iterative Pruning + Fine-Tune', description: 'Prune a small fraction, fine-tune to recover, repeat. Reaches much higher sparsity than one-shot pruning at the same accuracy.' },
+      { title: 'Lottery Ticket Hypothesis', description: 'Inside large nets there exist sparse sub-networks ("winning tickets") that, when trained from the original init, match the dense model. Foundational for understanding why pruning works.' },
     ],
   }
   
@@ -1263,6 +1653,304 @@ with torch.no_grad():
     logits = model(**enc).logits
 preds = logits.argmax(dim=-1)
 print(preds.tolist())`,
+
+    'torch-compile': `import torch
+import torch.nn as nn
+
+model = nn.Sequential(
+    nn.Linear(1024, 4096), nn.GELU(),
+    nn.Linear(4096, 4096), nn.GELU(),
+    nn.Linear(4096, 1024),
+).cuda()
+
+# One line — graph capture + fused Triton kernels
+compiled = torch.compile(model, mode="reduce-overhead")
+
+x = torch.randn(64, 1024, device="cuda")
+for _ in range(3):           # first call compiles, later calls are fast
+    y = compiled(x)
+print(y.shape)
+
+# Inspect why a graph break happened
+# import torch._dynamo as dynamo
+# explanation = dynamo.explain(model)(x)
+# print(explanation)` ,
+
+    'hooks': `import torch
+import torch.nn as nn
+
+model = nn.Sequential(nn.Linear(8, 16), nn.ReLU(), nn.Linear(16, 4))
+
+activations = {}
+def save_act(name):
+    def hook(module, inputs, output):
+        activations[name] = output.detach()
+    return hook
+
+h1 = model[0].register_forward_hook(save_act("linear1"))
+h2 = model[2].register_forward_hook(save_act("linear2"))
+
+x = torch.randn(2, 8)
+out = model(x)
+print({k: v.shape for k, v in activations.items()})
+
+# IMPORTANT: remove hooks when done — otherwise they leak and warp future runs
+h1.remove(); h2.remove()` ,
+
+    'gradient-checkpointing': `import torch
+import torch.nn as nn
+from torch.utils.checkpoint import checkpoint_sequential
+
+class DeepBlock(nn.Module):
+    def __init__(self, d=1024):
+        super().__init__()
+        self.layers = nn.Sequential(*[
+            nn.Sequential(nn.Linear(d, d), nn.GELU()) for _ in range(24)
+        ])
+    def forward(self, x):
+        # Recompute activations for backward in 4 chunks
+        return checkpoint_sequential(self.layers, segments=4, input=x,
+                                      use_reentrant=False)
+
+model = DeepBlock().cuda()
+x = torch.randn(8, 1024, device="cuda", requires_grad=True)
+loss = model(x).sum()
+loss.backward()
+print("backward done with checkpointed memory")` ,
+
+    'mixed-precision': `import torch
+import torch.nn as nn
+
+model = nn.Linear(1024, 1024).cuda()
+opt   = torch.optim.AdamW(model.parameters(), lr=1e-3)
+scaler = torch.cuda.amp.GradScaler()      # fp16 needs a scaler; bf16 does not
+
+for step in range(5):
+    x = torch.randn(64, 1024, device="cuda")
+    y = torch.randn(64, 1024, device="cuda")
+
+    opt.zero_grad(set_to_none=True)
+    with torch.autocast("cuda", dtype=torch.float16):
+        pred = model(x)
+        loss = ((pred - y) ** 2).mean()
+
+    scaler.scale(loss).backward()         # scaled grads
+    scaler.unscale_(opt)                  # unscale before clip
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+    scaler.step(opt)
+    scaler.update()
+    print(step, float(loss))` ,
+
+    'ddp': `# Run with: torchrun --nproc_per_node=4 train_ddp.py
+import os, torch, torch.nn as nn
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
+
+def main():
+    dist.init_process_group("nccl")
+    rank = dist.get_rank()
+    torch.cuda.set_device(rank)
+
+    model = nn.Linear(1024, 1024).cuda(rank)
+    model = DDP(model, device_ids=[rank])
+    opt = torch.optim.AdamW(model.parameters(), lr=1e-3)
+
+    for step in range(10):
+        x = torch.randn(32, 1024, device=rank)
+        y = torch.randn(32, 1024, device=rank)
+        opt.zero_grad(set_to_none=True)
+        loss = ((model(x) - y) ** 2).mean()
+        loss.backward()      # ring all-reduce happens here automatically
+        opt.step()
+        if rank == 0:
+            print(step, float(loss))
+
+    dist.destroy_process_group()
+
+if __name__ == "__main__":
+    main()` ,
+
+    'fsdp': `# Run with: torchrun --nproc_per_node=4 train_fsdp.py
+import torch, torch.nn as nn
+import torch.distributed as dist
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp.wrap import size_based_auto_wrap_policy
+import functools
+
+def main():
+    dist.init_process_group("nccl")
+    rank = dist.get_rank()
+    torch.cuda.set_device(rank)
+
+    model = nn.Sequential(*[
+        nn.Sequential(nn.Linear(2048, 2048), nn.GELU()) for _ in range(24)
+    ]).cuda(rank)
+
+    wrap_policy = functools.partial(size_based_auto_wrap_policy,
+                                    min_num_params=1_000_000)
+    model = FSDP(model, auto_wrap_policy=wrap_policy)
+
+    opt = torch.optim.AdamW(model.parameters(), lr=1e-4)
+    for step in range(5):
+        x = torch.randn(8, 2048, device=rank)
+        opt.zero_grad(set_to_none=True)
+        loss = model(x).sum()
+        loss.backward()      # reduce-scatter, not all-reduce
+        opt.step()
+        if rank == 0:
+            print(step, float(loss))
+
+    dist.destroy_process_group()
+
+if __name__ == "__main__":
+    main()` ,
+
+    'profiler': `import torch
+import torch.nn as nn
+from torch.profiler import profile, ProfilerActivity, schedule, tensorboard_trace_handler
+
+model = nn.Linear(1024, 1024).cuda()
+opt = torch.optim.SGD(model.parameters(), lr=1e-3)
+
+with profile(
+    activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+    schedule=schedule(wait=1, warmup=1, active=3, repeat=1),
+    on_trace_ready=tensorboard_trace_handler("./tb_logs"),
+    record_shapes=True,
+    profile_memory=True,
+    with_stack=True,
+) as prof:
+    for step in range(6):
+        x = torch.randn(64, 1024, device="cuda")
+        opt.zero_grad(set_to_none=True)
+        loss = model(x).sum()
+        loss.backward()
+        opt.step()
+        prof.step()
+
+print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+# Then: tensorboard --logdir ./tb_logs` ,
+
+    'distributions-reparam': `import torch
+import torch.nn as nn
+from torch.distributions import Normal
+
+class VAEEncoder(nn.Module):
+    def __init__(self, in_dim=784, z_dim=32):
+        super().__init__()
+        self.net = nn.Sequential(nn.Linear(in_dim, 256), nn.ReLU())
+        self.mu     = nn.Linear(256, z_dim)
+        self.logvar = nn.Linear(256, z_dim)
+
+    def forward(self, x):
+        h = self.net(x)
+        mu, logvar = self.mu(h), self.logvar(h)
+        std = (0.5 * logvar).exp()
+
+        # reparameterization trick — gradient flows through mu and std
+        q = Normal(mu, std)
+        z = q.rsample()                       # NOT q.sample()
+
+        kl = 0.5 * (mu.pow(2) + std.pow(2) - 1 - 2 * std.log()).sum(-1)
+        return z, kl
+
+enc = VAEEncoder()
+z, kl = enc(torch.randn(4, 784))
+print(z.shape, kl.shape)` ,
+
+    'vmap-func': `import torch
+from torch.func import vmap, grad, functional_call
+import torch.nn as nn
+
+model = nn.Sequential(nn.Linear(10, 32), nn.ReLU(), nn.Linear(32, 1))
+params = dict(model.named_parameters())
+
+def loss_fn(params, x, y):
+    pred = functional_call(model, params, (x.unsqueeze(0),)).squeeze()
+    return (pred - y) ** 2
+
+x = torch.randn(64, 10)
+y = torch.randn(64)
+
+# Per-sample gradients in one line
+per_sample_grad = vmap(grad(loss_fn), in_dims=(None, 0, 0))(params, x, y)
+for name, g in per_sample_grad.items():
+    print(name, g.shape)      # leading dim is the batch` ,
+
+    'weight-init': `import torch
+import torch.nn as nn
+
+class MLP(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc1 = nn.Linear(784, 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, 10)
+        self.apply(self._init_weights)
+
+    @staticmethod
+    def _init_weights(m):
+        if isinstance(m, nn.Linear):
+            nn.init.kaiming_normal_(m.weight, nonlinearity="relu")
+            nn.init.zeros_(m.bias)
+        elif isinstance(m, (nn.BatchNorm1d, nn.LayerNorm)):
+            nn.init.ones_(m.weight)
+            nn.init.zeros_(m.bias)
+
+model = MLP()
+x = torch.randn(8, 784)
+h = torch.relu(model.fc1(x))
+print("layer-1 activation std:", h.std().item())   # should be ~1, not 0.01 or 100` ,
+
+    'quantization': `import torch
+import torch.nn as nn
+import torch.ao.quantization as tq
+
+class MLP(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.quant   = tq.QuantStub()
+        self.fc1     = nn.Linear(784, 256)
+        self.relu    = nn.ReLU()
+        self.fc2     = nn.Linear(256, 10)
+        self.dequant = tq.DeQuantStub()
+    def forward(self, x):
+        x = self.quant(x); x = self.relu(self.fc1(x))
+        return self.dequant(self.fc2(x))
+
+model = MLP().eval()
+model.qconfig = tq.get_default_qconfig("fbgemm")
+tq.prepare(model, inplace=True)
+
+# Calibrate with a few representative batches
+for _ in range(20):
+    model(torch.randn(8, 784))
+
+int8_model = tq.convert(model, inplace=False)
+print(int8_model)
+print("size MB:", sum(p.numel() for p in int8_model.parameters()) * 1e-6)` ,
+
+    'pruning': `import torch
+import torch.nn as nn
+import torch.nn.utils.prune as prune
+
+model = nn.Sequential(nn.Linear(784, 256), nn.ReLU(), nn.Linear(256, 10))
+
+# Prune 40% of weights globally by magnitude
+params_to_prune = [(model[0], "weight"), (model[2], "weight")]
+prune.global_unstructured(
+    params_to_prune,
+    pruning_method=prune.L1Unstructured,
+    amount=0.4,
+)
+
+for name, module in [("fc1", model[0]), ("fc2", model[2])]:
+    sparsity = float(torch.sum(module.weight == 0)) / module.weight.numel()
+    print(f"{name} sparsity: {sparsity:.0%}")
+
+# Make the pruning permanent (drops the mask, bakes zeros into the weight)
+for module, name in params_to_prune:
+    prune.remove(module, name)` ,
   }
   
   return examples[topicId] || `# PyTorch code example for ${topicId}
@@ -1270,6 +1958,454 @@ import torch
 import torch.nn as nn
 
 # Implementation details here...`
+}
+
+/**
+ * Short, browser-runnable snippets for the Pyodide playground.
+ * These avoid .backward() side-effects and use only the subset of PyTorch
+ * that the in-browser numpy-backed shim implements. They are designed to
+ * PRINT something observable within a few seconds. Topics not listed here
+ * fall back to getCodeExample() — most of those also work because the shim
+ * makes .backward() / optimizer.step() into silent no-ops.
+ */
+function getRunnableExample(topicId: string): string {
+  const runnable: Record<string, string> = {
+    'pytorch-intro': `# Hello, PyTorch (in your browser!)
+import torch
+
+print("torch version:", torch.__version__)
+print("cuda available:", torch.cuda.is_available())
+
+x = torch.randn(3, 3)
+print("random 3x3 tensor:")
+print(x)
+print("shape:", x.shape, "| dtype:", x.dtype)`,
+
+    'tensor-fundamentals': `import torch
+
+# Five ways to make a tensor
+a = torch.tensor([[1., 2.], [3., 4.]])
+b = torch.zeros(2, 3)
+c = torch.ones(2, 3)
+d = torch.randn(2, 3)       # N(0,1)
+e = torch.arange(0, 10)     # 0..9
+
+print("a + a =", (a + a).tolist())
+print("a @ a =", (a @ a).tolist())     # matrix multiply
+print("a.sum():", a.sum().item())
+print("d.shape:", d.shape)`,
+
+    'tensor-broadcasting': `import torch
+
+# (3,1) + (1,4)  ->  (3,4) via broadcasting
+a = torch.tensor([[1.], [2.], [3.]])
+b = torch.tensor([[10., 20., 30., 40.]])
+print("a shape:", a.shape, "| b shape:", b.shape)
+print("a + b shape:", (a + b).shape)
+print("a + b =")
+print(a + b)
+
+# Per-feature bias applied across a batch
+batch = torch.randn(4, 5)
+bias  = torch.randn(5)
+print("(batch + bias).shape =", (batch + bias).shape)`,
+
+    'autograd-basics': `import torch
+
+# Track gradients
+x = torch.tensor([2.0], requires_grad=True)
+y = torch.tensor([3.0], requires_grad=True)
+
+# z = x*y + y^2     →   dz/dx = y = 3,   dz/dy = x + 2y = 8
+z = x * y + y**2
+print("z =", z.item())
+
+z.backward()   # real reverse-mode autograd (in-browser)
+print("dz/dx (should be 3):", x.grad.tolist())
+print("dz/dy (should be 8):", y.grad.tolist())`,
+
+    'computation-graph': `import torch
+
+# Every op builds a node in the computation graph
+x = torch.tensor([1., 2., 3.], requires_grad=True)
+y = (x ** 2).sum()
+print("x:", x.tolist())
+print("y = sum(x^2) =", y.item())
+print("grad_fn:", y.requires_grad)   # tracked`,
+
+    'nn-module': `import torch
+import torch.nn as nn
+
+class MLP(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc1 = nn.Linear(4, 8)
+        self.fc2 = nn.Linear(8, 3)
+    def forward(self, x):
+        h = torch.relu(self.fc1(x))
+        return self.fc2(h)
+
+model = MLP()
+x = torch.randn(2, 4)            # batch of 2, features 4
+out = model(x)
+print("input:", x.shape)
+print("output:", out.shape)
+print("params:", sum(p.numel() for p in model.parameters()))`,
+
+    'activation-functions': `import torch
+import torch.nn.functional as F
+
+x = torch.linspace(-3, 3, 7)
+print("x       :", [round(v,2) for v in x.tolist()])
+print("relu    :", [round(v,2) for v in F.relu(x).tolist()])
+print("sigmoid :", [round(v,2) for v in F.sigmoid(x).tolist()])
+print("tanh    :", [round(v,2) for v in F.tanh(x).tolist()])
+print("gelu    :", [round(v,2) for v in F.gelu(x).tolist()])`,
+
+    'loss-functions': `import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# 1) regression loss
+pred = torch.tensor([2.5, 0.0, 2.0, 8.0])
+true = torch.tensor([3.0, -0.5, 2.0, 7.0])
+print("MSE =", F.mse_loss(pred, true).item())
+
+# 2) classification loss (raw logits + integer labels)
+logits = torch.randn(4, 3)       # batch 4, 3 classes
+targets = torch.tensor([0, 2, 1, 0])
+print("CrossEntropy =", F.cross_entropy(logits, targets).item())`,
+
+    'optimizers': `import torch
+import torch.nn as nn
+import torch.optim as optim
+
+torch.manual_seed(0)
+model = nn.Sequential(nn.Linear(10, 5), nn.ReLU(), nn.Linear(5, 1))
+opt = optim.Adam(model.parameters(), lr=5e-2)
+loss_fn = nn.MSELoss()
+
+x = torch.randn(32, 10)
+y = torch.randn(32, 1)
+
+for step in range(20):
+    opt.zero_grad()
+    loss = loss_fn(model(x), y)
+    loss.backward()
+    opt.step()
+    if step % 4 == 0:
+        print(f"step {step:>2}: loss = {loss.item():.4f}")
+print(f"final:   loss = {loss.item():.4f}   ← Adam actually updated the weights")`,
+
+    'training-loop': `import torch, torch.nn as nn, torch.optim as optim
+from torch.utils.data import TensorDataset, DataLoader
+
+torch.manual_seed(0)
+# tiny synthetic dataset: label = is sum(x) positive?
+X = torch.randn(256, 4)
+y = (X.sum(dim=1) > 0).long()
+ds = TensorDataset(X, y)
+dl = DataLoader(ds, batch_size=32, shuffle=True)
+
+model = nn.Sequential(nn.Linear(4, 16), nn.ReLU(), nn.Linear(16, 2))
+opt   = optim.Adam(model.parameters(), lr=5e-2)
+loss_fn = nn.CrossEntropyLoss()
+
+for epoch in range(5):
+    total = 0.0
+    for xb, yb in dl:
+        opt.zero_grad()
+        loss = loss_fn(model(xb), yb)
+        loss.backward()
+        opt.step()
+        total += loss.item()
+    # eval accuracy on the full set
+    with torch.no_grad():
+        pred = model(X)
+        acc = (pred.argmax(dim=1) == y).float().mean().item()
+    print(f"epoch {epoch}: avg loss = {total/len(dl):.4f}   train-acc = {acc*100:.1f}%")`,
+
+    'datasets-dataloaders': `import torch
+from torch.utils.data import TensorDataset, DataLoader
+
+X = torch.arange(20).view(10, 2).float()
+y = torch.arange(10).float()
+ds = TensorDataset(X, y)
+dl = DataLoader(ds, batch_size=3, shuffle=False)
+
+print(f"{len(ds)} samples, {len(dl)} batches of up to 3")
+for i, (xb, yb) in enumerate(dl):
+    print(f" batch {i}: x.shape={list(xb.shape)}, y={yb.tolist()}")`,
+
+    'cnn-fundamentals': `import torch
+import torch.nn as nn
+
+model = nn.Sequential(
+    nn.Conv2d(1, 8, kernel_size=3, padding=1),
+    nn.ReLU(),
+    nn.MaxPool2d(2),
+    nn.Conv2d(8, 16, kernel_size=3, padding=1),
+    nn.ReLU(),
+    nn.MaxPool2d(2),
+    nn.Flatten(),
+    nn.Linear(16 * 7 * 7, 10),
+)
+
+x = torch.randn(2, 1, 28, 28)   # batch of 2 "MNIST" images
+out = model(x)
+print("input :", x.shape)
+print("logits:", out.shape)`,
+
+    'rnn-lstm': `import torch
+import torch.nn as nn
+
+# Minimal sequence model: embed -> linear per timestep
+vocab, d = 20, 16
+embed = nn.Embedding(vocab, d)
+head  = nn.Linear(d, vocab)
+
+tokens = torch.randint(0, vocab, (2, 8))   # batch 2, seq 8
+h = embed(tokens)
+logits = head(h)
+print("tokens :", tokens.shape)
+print("embeds :", h.shape)
+print("logits :", logits.shape)`,
+
+    'transformers': `import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# A single self-attention head, written from scratch
+B, T, d = 2, 5, 16
+x = torch.randn(B, T, d)
+
+Wq, Wk, Wv = nn.Linear(d,d), nn.Linear(d,d), nn.Linear(d,d)
+q, k, v = Wq(x), Wk(x), Wv(x)
+
+scores = (q @ k.transpose(1,2)) / (d**0.5)
+attn   = F.softmax(scores, dim=-1)
+out    = attn @ v
+print("attn shape   :", attn.shape)
+print("out shape    :", out.shape)
+print("row 0 weights:", [round(v,3) for v in attn[0,0].tolist()])`,
+  }
+  return runnable[topicId] || `# ${topicId} — your turn!
+# The in-browser runtime is a numpy-backed torch shim. It supports
+# tensors, nn.Linear, activations, MSE / CrossEntropy, SGD and Adam with
+# real reverse-mode autograd. Conv2d / Embedding / BatchNorm are
+# forward-only shims. Click "Open in Colab" for the genuine runtime.
+
+import torch
+import torch.nn as nn
+
+# try a small model — this is guaranteed to run and converge:
+torch.manual_seed(0)
+x = torch.randn(16, 8)
+y = torch.randn(16, 1)
+
+model = nn.Sequential(nn.Linear(8, 4), nn.ReLU(), nn.Linear(4, 1))
+opt   = torch.optim.Adam(model.parameters(), lr=5e-2)
+loss_fn = nn.MSELoss()
+
+for step in range(10):
+    opt.zero_grad()
+    loss = loss_fn(model(x), y)
+    loss.backward()
+    opt.step()
+    print(f"step {step}: loss = {loss.item():.4f}")
+`
+}
+
+/**
+ * Per-line plain-English commentary for the snippets returned by getCodeExample().
+ * Keys are 1-based line numbers matching the source string. Topics without an
+ * entry simply get no line annotations (the "Explain each line" button is hidden).
+ */
+function getCodeAnnotations(topicId: string): Record<number, string> | undefined {
+  const a: Record<string, Record<number, string>> = {
+    'pytorch-intro': {
+      1: 'Import the PyTorch package — this is always your starting point.',
+      3: 'Comment: a quick sanity check that PyTorch installed correctly.',
+      4: 'Print the installed version (e.g. "2.3.0").',
+      5: 'Ask PyTorch whether a CUDA-capable GPU is visible right now.',
+      7: 'Comment: decide ONCE where tensors live, then reuse that device everywhere.',
+      8: 'Build a torch.device — "cuda" if a GPU exists, otherwise "cpu". Portable code uses this idiom.',
+      10: 'Comment: now actually create some data on the chosen device.',
+      11: 'Draw a 3×3 random tensor from N(0,1) and place it on the device directly (no .to() needed).',
+      12: 'Show the tensor values.',
+      13: "Inspect metadata: .device tells you where it lives, .dtype its numeric type (float32 by default).",
+    },
+    'tensor-fundamentals': {
+      1: 'Import PyTorch.',
+      3: 'Comment: three common ways to build tensors.',
+      4: 'From a Python list → 1-D int64 tensor of length 5.',
+      5: '3×3 tensor filled with 0.0 (float32).',
+      6: '2×4 tensor of samples from a standard normal distribution.',
+      8: 'Comment: math on tensors is element-wise and broadcast-aware by default.',
+      9: 'A 2×2 matrix literal.',
+      10: 'Another 2×2 matrix literal.',
+      12: 'Element-wise addition — same shape in, same shape out.',
+      13: 'Matrix multiplication: (2×2) @ (2×2) = (2×2). Same as a @ b.',
+      14: 'Element-wise (Hadamard) product — not the same as matrix multiply!',
+      16: 'Comment: and finally, GPU placement.',
+      17: 'Only try to move if a GPU is available (otherwise .cuda() raises).',
+      18: 'Copy `a` onto the default CUDA device. Returns a NEW tensor; the CPU copy still exists.',
+      19: 'Equivalent, more explicit: .to("cuda") also accepts a torch.device or a dtype.',
+    },
+    'tensor-broadcasting': {
+      1: 'Import PyTorch.',
+      3: 'Comment: broadcasting lets shapes line up automatically.',
+      4: 'Column vector, shape (3,1).',
+      5: 'Row vector, shape (1,4).',
+      6: 'Adding them stretches both to the compatible shape (3,4) without copying data.',
+      8: 'Comment: the everyday use — apply a per-feature bias to a batch.',
+      9: 'Batch of 32 rows, 128 features each.',
+      10: 'One bias per feature — shape (128,).',
+      11: 'PyTorch treats `bias` as if it were (1,128) and broadcasts it across all 32 rows.',
+      13: 'Comment: boolean indexing keeps only the values that match a condition.',
+      14: 'A 1-D tensor of 5 random floats.',
+      15: 'Pick the entries where x>0 is True → variable-length result.',
+      17: 'Comment: gather/scatter — fancy indexing for picking class-specific values.',
+      18: 'Fake classifier output: 4 examples × 10 classes.',
+      19: 'One label per example.',
+      20: 'For each row i, pick logits[i, labels[i]] — the logit of the true class.',
+    },
+    'autograd-basics': {
+      1: 'Import PyTorch.',
+      3: 'Comment: requires_grad=True turns on gradient tracking for a tensor.',
+      4: 'Leaf tensor x=2, with a gradient slot waiting to be filled.',
+      5: 'Leaf tensor y=3, also tracked.',
+      7: 'Comment: build an expression — each op records itself in the autograd graph.',
+      8: 'z = x² + y³ → uses the tracked x and y, so z.grad_fn is set.',
+      10: 'Comment: now run reverse-mode autodiff.',
+      11: '.backward() walks the graph backwards and fills x.grad and y.grad.',
+      13: 'dz/dx = 2x = 4.0.',
+      14: 'dz/dy = 3y² = 27.0.',
+      16: 'Comment: gradients ACCUMULATE — you must zero them before the next backward.',
+      17: 'In-place reset x.grad → 0.',
+      18: 'Build a new expression z2 = x³.',
+      19: 'Backward again — fills x.grad with 3x² = 12.',
+      20: 'Print to verify.',
+    },
+    'nn-module': {
+      1: 'Import PyTorch.',
+      2: 'Alias the neural-network submodule as `nn` — the standard convention.',
+      4: 'Define a model class by subclassing nn.Module. Every layer you want trainable lives here.',
+      5: '__init__ receives the hyperparameters you want to configure.',
+      6: 'Always call super().__init__() — it wires up parameter tracking.',
+      7: 'First learnable layer: fully-connected (input_size → hidden_size).',
+      8: 'Activation module — could also use torch.relu in forward().',
+      9: 'Output layer (hidden_size → output_size). Produces raw logits.',
+      11: 'forward() defines HOW data flows. PyTorch calls it automatically when you do model(x).',
+      12: 'Layer 1: affine transform.',
+      13: 'Non-linearity so the network can learn non-linear patterns.',
+      14: 'Layer 2: final projection to output_size.',
+      15: 'Return the logits.',
+      17: 'Comment: instantiate and run a forward pass.',
+      18: 'Typical MNIST-sized model: 784 pixels → 128 hidden → 10 classes.',
+      19: 'A batch of 32 flattened images (32 × 784).',
+      20: 'Calling the module is equivalent to model.forward(input_data) + hooks + eval/train flags.',
+    },
+    'loss-functions': {
+      1: 'Import PyTorch.',
+      2: 'Import the nn submodule for built-in loss classes.',
+      4: 'Comment: regression.',
+      5: 'Fake predictions and targets, both shaped (16,1).',
+      6: 'Mean-squared error — average of (pred − target)².',
+      8: 'Comment: multi-class classification — feed RAW logits, not softmax.',
+      9: 'Logits for 16 examples × 10 classes.',
+      10: 'One integer label per example in [0,10).',
+      11: 'CrossEntropyLoss applies log-softmax + NLL internally — numerically stable.',
+      13: 'Comment: multi-label / binary — each column is an independent yes/no.',
+      14: 'Raw logits shaped (16,5).',
+      15: 'Binary targets (0/1), cast to float for BCE.',
+      16: 'BCEWithLogitsLoss fuses sigmoid + BCE for stability.',
+      18: 'Print all three loss values as plain Python floats.',
+    },
+    'optimizers': {
+      1: 'Import PyTorch.',
+      2: 'Import the nn submodule.',
+      3: 'AdamW = Adam with decoupled weight decay — the modern default.',
+      4: 'LR scheduler that slowly anneals the learning rate along a cosine curve.',
+      6: 'A toy linear model for illustration.',
+      8: 'Comment: apply weight decay ONLY to true weight matrices, not biases/norms.',
+      9: 'Two parameter groups we will build up.',
+      10: 'Walk every named parameter in the model.',
+      11: '1-D tensors are biases or norm scales — exclude them from decay.',
+      12: 'Put them in the no-decay bucket.',
+      13: 'Otherwise it is a weight matrix/tensor — decay it.',
+      14: 'Put it in the decay bucket.',
+      16: 'Build the optimizer with TWO groups — each gets its own weight_decay.',
+      17: 'Decay group: 1e-2.',
+      18: 'No-decay group: 0.0.',
+      19: 'Shared learning rate and Adam betas for both groups.',
+      21: 'Wrap the optimizer with the scheduler. T_max = number of epochs over which to anneal.',
+      23: 'Training loop skeleton.',
+      24: 'Comment: real forward/backward/step would go here each iteration.',
+      25: 'Advance the scheduler once per epoch (some schedulers step per iteration — read the docs).',
+    },
+    'training-loop': {
+      1: 'Import PyTorch.',
+      2: 'DataLoader iterates mini-batches from a Dataset.',
+      4: 'One epoch of training as a reusable function.',
+      5: 'Put the model in training mode (enables Dropout / BatchNorm updates).',
+      6: 'Running total of weighted losses over the whole epoch.',
+      7: 'Iterate batches: x=inputs, y=labels.',
+      8: 'Move data to the same device as the model.',
+      9: 'Clear old gradients — they accumulate by default.',
+      10: 'Forward pass + loss in one line.',
+      11: 'Reverse-mode autodiff fills .grad on every parameter.',
+      12: 'Apply one gradient-descent step with the configured optimizer.',
+      13: 'Weight the batch loss by its actual size so the epoch average is correct.',
+      14: 'Return average per-example loss over the epoch.',
+      16: 'Decorator: disable autograd everywhere inside evaluate() — faster, uses less memory.',
+      17: 'Same idea, but for evaluation only.',
+      18: 'Switch to eval mode (disables Dropout, freezes BN running stats).',
+      19: 'Running total of losses.',
+      20: 'Iterate the eval loader.',
+      21: 'Move to device.',
+      22: 'Add this batch\'s contribution — no .backward() needed.',
+      23: 'Return mean per-example eval loss.',
+    },
+    'cnn-architectures': {
+      1: 'Import PyTorch.',
+      2: 'Import the nn submodule.',
+      4: 'Define a small CNN suitable for CIFAR-10-sized images.',
+      5: '__init__ receives the number of output classes.',
+      6: 'Call super — required for every nn.Module.',
+      7: 'Feature extractor — a stack of Conv + Norm + ReLU + Pool blocks.',
+      8: 'First conv: 3 input channels (RGB) → 32 feature maps, 3×3 kernel, padding=1 keeps spatial size.',
+      9: 'BatchNorm + ReLU applied in place for memory efficiency.',
+      10: 'Halve the spatial dimensions (32×32 → 16×16).',
+      11: 'Second conv block: 32 → 64 channels.',
+      12: 'Norm + non-linearity.',
+      13: 'Downsample again (16×16 → 8×8).',
+      15: 'Classifier head that maps features → class scores.',
+      16: 'Global average pool → 1×1 spatial regardless of input size.',
+      17: 'Flatten (N,64,1,1) → (N,64).',
+      18: 'Final linear layer → (N, num_classes) logits.',
+      21: 'Forward pass: features then classifier, as expected.',
+      24: 'Instantiate the default 10-class model.',
+      25: 'Run a fake batch of 8 RGB 32×32 images through it.',
+      26: 'Expect the output shape (8, 10).',
+    },
+    'transformers': {
+      1: 'Import PyTorch.',
+      2: 'Import the nn submodule.',
+      4: 'Comment: PyTorch ships a ready-made Transformer encoder block.',
+      5: 'Build ONE encoder layer with the common hyperparameters.',
+      6: 'd_model = embedding size, nhead = 8 attention heads, FFN inner dim = 2048.',
+      7: 'dropout 0.1, batch_first=True → tensors shaped (batch, seq, d_model); norm_first is the "pre-norm" variant used in modern LLMs.',
+      9: 'Stack 6 identical encoder layers — same idea as BERT-base depth/2.',
+      11: 'Comment: build a toy batch.',
+      12: 'Batch=32, sequence length=100, embedding dim=512.',
+      13: 'Comment: a padding mask marks positions that should be IGNORED by attention.',
+      14: 'Here everything is "real" tokens (all False).',
+      16: 'Forward: mask is passed through src_key_padding_mask.',
+      17: 'Output shape unchanged — (32, 100, 512).',
+    },
+  }
+  return a[topicId]
 }
 
 function getBestPractices(topicId: string): string[] {
@@ -1490,6 +2626,90 @@ function getBestPractices(topicId: string): string[] {
       'Use warmup (~10% of steps) and linear decay for stable fine-tuning',
       'For memory-constrained setups use gradient checkpointing, mixed precision, or LoRA/PEFT',
       'Always tokenize with padding + attention masks, never feed raw unpadded sequences of different lengths',
+    ],
+    'torch-compile': [
+      'Compile the whole model once at the top — don\'t compile inside the training loop',
+      'Use mode="reduce-overhead" for small/medium models, mode="max-autotune" for the final perf squeeze',
+      'Keep input shapes stable — every new shape triggers a recompile and pollutes the cache',
+      'Run torch._dynamo.explain() on a tricky model to find graph breaks before they hurt you',
+      'Avoid .item(), .cpu(), or data-dependent control flow in the hot path; they force graph breaks',
+    ],
+    'hooks': [
+      'Always keep the handle returned by register_*_hook and call .remove() — leaked hooks are a top source of phantom bugs',
+      'Use forward hooks for activations, full_backward hooks for gradients — don\'t mix them up',
+      'Detach tensors stored from a hook (output.detach()) or you\'ll keep the entire graph alive',
+      'Avoid mutating activations in a forward hook unless you really mean to — return a new tensor instead',
+      'For per-layer instrumentation, prefer hooks over modifying the model — keeps the model definition clean',
+    ],
+    'gradient-checkpointing': [
+      'Use use_reentrant=False on new code; the reentrant variant has subtle bugs with non-tensor inputs',
+      'Apply to big homogeneous blocks (transformer layers, U-Net stages) — not to cheap pointwise ops',
+      'Combine with mixed precision and FSDP for the full memory-saving stack',
+      'Verify correctness with a small dense run first; checkpointed and non-checkpointed losses must match exactly',
+      'Don\'t checkpoint layers that contain randomness (dropout) without seeding properly — recompute will diverge',
+    ],
+    'mixed-precision': [
+      'Prefer bf16 on Ampere/Hopper GPUs and TPUs — no GradScaler needed and the wider range avoids most NaNs',
+      'Always pair fp16 autocast with GradScaler; without scaling, gradients underflow to zero',
+      'Call scaler.unscale_(optimizer) before gradient clipping, then scaler.step(optimizer)',
+      'Wrap only the forward (and loss) in autocast — leave optimizer.step() and the loss-backward dispatch outside',
+      'Watch loss for NaNs in the first ~100 steps; if they appear, lower the initial scale or switch to bf16',
+    ],
+    'ddp': [
+      'Always use torchrun (or torch.distributed.launch) — never spawn processes manually for production',
+      'Wrap the model in DDP after moving it to the correct device, never before',
+      'Use DistributedSampler and call sampler.set_epoch(epoch) every epoch for proper shuffling',
+      'Restrict logging, checkpointing, and validation to rank 0 — every rank doing it wastes I/O and clobbers files',
+      'Use no_sync() between micro-batches when accumulating gradients to skip redundant all-reduces',
+    ],
+    'fsdp': [
+      'Use a transformer or size-based auto-wrap policy — manual wrapping is fragile',
+      'Combine FSDP with mixed precision (fp16/bf16) and gradient checkpointing for max memory savings',
+      'Save with FSDP\'s state_dict APIs (full_state_dict or sharded) — naive .state_dict() gives you only the local shard',
+      'Pin one process per GPU with torchrun and set torch.cuda.set_device(rank) early',
+      'Profile communication: if reduce-scatter dominates, try a coarser auto-wrap or backward_prefetch=BACKWARD_PRE',
+    ],
+    'profiler': [
+      'Always use a schedule with wait/warmup steps — the first few iterations are noisy and skew everything',
+      'Use the TensorBoard profiler plugin for the trace viewer — it makes regressions obvious',
+      'Sort by cuda_time_total to find slow GPU ops, by cpu_time_total to find Python-side overhead',
+      'Enable profile_memory=True only when investigating OOMs — it slows runs noticeably',
+      'Profile in your real environment with the real batch size; toy runs hide the most important bottlenecks',
+    ],
+    'distributions-reparam': [
+      'Use rsample() (not sample()) when you need gradients to flow through the random draw',
+      'Parameterize log σ instead of σ — keeps σ positive and stabilizes training',
+      'For discrete distributions, reach for Gumbel-Softmax (or the straight-through estimator) instead of the trick',
+      'Always include the KL term in your VAE loss — without it the encoder collapses to a delta',
+      'When debugging, set σ to a small constant and check that the model still trains; isolates encoder vs decoder bugs',
+    ],
+    'vmap-func': [
+      'Use torch.func.functional_call to expose any nn.Module as a pure function of its parameters',
+      'in_dims tells vmap which axis to vectorize over per argument — None means "share", an int means "map"',
+      'Compose freely: vmap(grad(...)), grad(vmap(...)), jacrev(...) — but read the docs on randomness',
+      'For per-sample gradients, the vmap(grad(...)) one-liner replaces hundreds of lines of manual hook code',
+      'Avoid in-place ops and stateful modules inside the function you transform — they break the abstraction',
+    ],
+    'weight-init': [
+      'Use kaiming_normal_ (mode="fan_in", nonlinearity="relu") as the default for ReLU-family conv/linear layers',
+      'Use xavier_uniform_ for tanh / sigmoid layers (rare in modern nets but still appears)',
+      'Initialize biases to zero, BatchNorm/LayerNorm γ to one and β to zero',
+      'For very deep residual nets, zero-init the last conv/linear in each block so the network starts as the identity',
+      'Always sanity-check: forward a random batch and confirm activation std stays roughly constant across depth',
+    ],
+    'quantization': [
+      'Start with dynamic quantization on Linear/LSTM-heavy models — it\'s a one-liner with surprising payoff',
+      'For convnets, post-training static quantization with per-channel weights is the right default',
+      'When PTQ drops accuracy too far, switch to QAT and fine-tune for a few epochs to recover',
+      'Pick the right backend: fbgemm (x86), qnnpack (mobile/ARM), TensorRT/ONNX Runtime (deployment)',
+      'Always benchmark accuracy AND latency on the actual deployment device, never on the dev box',
+    ],
+    'pruning': [
+      'Iterative pruning + fine-tuning beats one-shot pruning — prune a little, recover, repeat',
+      'For real speedups on dense GPUs use structured pruning (channels/heads); unstructured needs sparse kernels',
+      'Call prune.remove(module, name) once you\'re done so the mask is baked into the weight permanently',
+      'Combine pruning with quantization for compounded compression — they stack cleanly',
+      'Track per-layer sparsity, not just global — uneven sparsity often hides underperforming layers',
     ],
   }
   
@@ -3604,4 +4824,195 @@ def predict(texts):
   }
   
   return fullExamples[topicId] || getCodeExample(topicId)
+}
+
+
+type GuideEntry = { whatYouSee: string; tryThis: string; takeaway: string }
+
+const INTERACTIVE_GUIDES: Record<string, GuideEntry> = {
+  'pytorch-intro': {
+    whatYouSee: 'The PyTorch logo and an AI brain diagram summarising the ecosystem.',
+    tryThis: 'Hover the nodes to see how components relate, then skim the "Key Concepts" tab.',
+    takeaway: 'PyTorch ties Python, tensors, autograd and GPU compute into one clean stack.',
+  },
+  'tensor-fundamentals': {
+    whatYouSee: 'A tensor visualizer that renders scalars, vectors, matrices and a real RGB image batch.',
+    tryThis: 'Cycle through 0-D → 4-D. Notice how shape grows while storage stays a flat array.',
+    takeaway: 'A tensor is just numbers + a shape + a device — the "shape" is what changes meaning.',
+  },
+  'tensor-broadcasting': {
+    whatYouSee: 'Element-wise, matmul, and broadcast ops shown step by step.',
+    tryThis: 'Run "broadcast" and watch the (3,1) tensor expand against (1,3) without copying memory.',
+    takeaway: 'Align shapes from the right; 1-sized dims stretch for free. No loops, no copies.',
+  },
+  'autograd-basics': {
+    whatYouSee: 'A live backprop trace through a small computation graph.',
+    tryThis: 'Play the animation and watch gradients flow backwards, accumulating in leaves.',
+    takeaway: 'Autograd is the chain rule applied automatically to a dynamically built graph.',
+  },
+  'custom-autograd': {
+    whatYouSee: 'Forward + backward passes with editable nodes.',
+    tryThis: 'Imagine each node as a torch.autograd.Function: save inputs on forward, use them in backward.',
+    takeaway: 'Custom Functions are just: save tensors with ctx, return grads in the same shape.',
+  },
+  'nn-module': {
+    whatYouSee: 'A trainable 2-5-4-1 MLP classifying 2-D points + an activation-function plotter.',
+    tryThis: 'Train on "circle", then switch to "spiral". Shrink both hidden layers to 1 and watch it fail.',
+    takeaway: 'Depth × width × non-linearity = capacity. Too little and it cannot fit non-linear boundaries.',
+  },
+  'cnn-architectures': {
+    whatYouSee: 'A CNN pipeline: input image → convolution → ReLU → max-pool → feature maps.',
+    tryThis: 'Scrub through kernels — edge detectors in early layers become textures later.',
+    takeaway: 'Convolutions share weights over space, which is why they generalise on images.',
+  },
+  'rnn-lstm': {
+    whatYouSee: 'A small recurrent-style network + a layer flow visual.',
+    tryThis: 'Picture the hidden state being re-fed at each timestep — the MLP is the "cell".',
+    takeaway: 'Weights are shared over time; vanishing gradients motivate gated LSTM/GRU cells.',
+  },
+  'transformers': {
+    whatYouSee: 'A Q·Kᵀ attention heatmap computed live between two token sequences.',
+    tryThis: 'Edit the input tokens and watch which target positions each source attends to.',
+    takeaway: 'Attention = weighted lookup. Softmax(QKᵀ/√d)V routes information without recurrence.',
+  },
+  'loss-functions': {
+    whatYouSee: 'A 2-D loss landscape + gradient descent trajectory on a mini-batch.',
+    tryThis: 'Crank the learning rate. You will see overshoot and divergence.',
+    takeaway: 'Loss shape + lr + momentum together decide whether you converge or explode.',
+  },
+  'training-loop': {
+    whatYouSee: 'A training simulator: forward → loss → backward → step, ticking in real time.',
+    tryThis: 'Start training, then pause at different epochs and look at the weights/loss curve.',
+    takeaway: 'Every step is just: zero_grad, forward, loss, backward, optimizer.step.',
+  },
+  'optimizers': {
+    whatYouSee: 'SGD, Momentum, RMSProp and Adam racing on the same loss surface.',
+    tryThis: 'Pick a ravine-shaped loss and watch Adam tunnel along it while SGD zig-zags.',
+    takeaway: 'Adam adapts per-parameter step sizes; that is what makes it robust out-of-the-box.',
+  },
+  'distributed-training': {
+    whatYouSee: 'A stacked-layer pipeline suggesting forward activations flowing across devices.',
+    tryThis: 'Think of each layer block as one GPU in FSDP/DDP — all-reduce happens at the boundaries.',
+    takeaway: 'Data-parallel shards the batch; model-parallel shards the parameters.',
+  },
+  'model-optimization': {
+    whatYouSee: 'A compact layer pipeline + a small MLP (the "student" during distillation).',
+    tryThis: 'Imagine halving every weight — that is what INT8 quantization does for inference.',
+    takeaway: 'Quantize, prune, distill, compile. Each is a knob that trades accuracy for speed/size.',
+  },
+  'gan-basics': {
+    whatYouSee: 'Generator samples drifting towards the real distribution while D learns a boundary.',
+    tryThis: 'Watch the D heatmap — if it collapses to one colour the generator has won this round.',
+    takeaway: 'GANs are a minimax game: each network is only as good as its opponent forces it to be.',
+  },
+  'dcgan': {
+    whatYouSee: 'A GAN training demo standing in for a convolutional G/D pair.',
+    tryThis: 'Translate: "Conv/BN/ReLU in G, Conv/LeakyReLU in D" — DCGAN\'s exact recipe.',
+    takeaway: 'DCGAN showed that architectural choices alone can stabilise GAN training.',
+  },
+  'stylegan': {
+    whatYouSee: 'A generator-vs-discriminator demo.',
+    tryThis: 'Imagine the latent z being split per resolution level — that is the "style" in StyleGAN.',
+    takeaway: 'Style-based generation gives interpretable control over coarse-to-fine features.',
+  },
+  'wgan': {
+    whatYouSee: 'A GAN demo — replace the BCE with a Wasserstein critic mentally.',
+    tryThis: 'Note how the discriminator\'s output is no longer bounded in [0,1] under WGAN.',
+    takeaway: 'Wasserstein + gradient penalty = stable, meaningful loss, almost no mode collapse.',
+  },
+  'diffusion-models': {
+    whatYouSee: 'A generative sampling demo.',
+    tryThis: 'Picture the generator step as "predict noise, subtract noise" repeated T times.',
+    takeaway: 'Diffusion = gradually de-noise a random vector into a sample.',
+  },
+  'rl-basics': {
+    whatYouSee: 'A gridworld agent learning with Q-learning. Live Q-values on every cell.',
+    tryThis: 'Run one episode at a time and watch Q-values propagate backwards from the goal.',
+    takeaway: 'Q(s,a) ← Q(s,a) + α[r + γ max Q(s′,·) − Q(s,a)]. That single update is the whole trick.',
+  },
+  'dqn': {
+    whatYouSee: 'Q-learning gridworld (stand-in for DQN).',
+    tryThis: 'Imagine the Q-table replaced by a neural net predicting Q-values for every action.',
+    takeaway: 'DQN = Q-learning + function approximation + replay buffer + target network.',
+  },
+  'policy-gradient': {
+    whatYouSee: 'Gridworld RL agent — a policy-gradient agent would maximise expected return directly.',
+    tryThis: 'Swap argmax for sampling from a softmax policy in your head.',
+    takeaway: 'Policy gradient: ∇J(θ) = E[∇ log π(a|s;θ) · Gₜ]. Reward scales the gradient.',
+  },
+  'ppo-trpo': {
+    whatYouSee: 'A stand-in RL agent.',
+    tryThis: 'PPO simply clips the probability ratio between old and new policies — that is the whole change.',
+    takeaway: 'Trust-region updates stop policy collapse when the environment is noisy.',
+  },
+  'model-based-rl': {
+    whatYouSee: 'Gridworld RL agent.',
+    tryThis: 'Now imagine the agent also learning a model f(s,a)→s′ and planning with it.',
+    takeaway: 'Model-based RL trades sample efficiency for extra complexity.',
+  },
+  'cv-fundamentals': {
+    whatYouSee: 'A conv pipeline + an RGB → grayscale → edge-detection demo.',
+    tryThis: 'Watch how a 3×3 Sobel kernel turns an image into its gradient magnitude.',
+    takeaway: 'Classic filters are small conv kernels. Deep CNNs learn the coefficients from data.',
+  },
+  'object-detection': {
+    whatYouSee: 'Edge/feature extraction demo that feeds into a downstream head.',
+    tryThis: 'Mentally add "anchor boxes + two heads (class, bbox)" to the pipeline.',
+    takeaway: 'Modern detectors share a CNN backbone and attach specialised heads for class + location.',
+  },
+  'image-segmentation': {
+    whatYouSee: 'Per-pixel feature extraction.',
+    tryThis: 'Think of the output as a per-pixel class map instead of a single class.',
+    takeaway: 'U-Net/Mask-R-CNN learn per-pixel predictions via encoder-decoder skip connections.',
+  },
+  'pose-estimation': {
+    whatYouSee: 'CV feature extraction.',
+    tryThis: 'Replace the output with K heatmaps, one per keypoint.',
+    takeaway: 'Keypoint regression = predict heatmaps, take the argmax for joint location.',
+  },
+  'word-embeddings': {
+    whatYouSee: 'A 2-D embedding space with clickable words and nearest-neighbour highlighting.',
+    tryThis: 'Click "king" then "queen". Now switch to "Vector Arithmetic" to see king − man + woman.',
+    takeaway: 'Good embeddings put similar meanings near each other; linear offsets encode analogies.',
+  },
+  'seq2seq': {
+    whatYouSee: 'An attention heatmap — the core of an encoder-decoder with attention.',
+    tryThis: 'Imagine each decoder step looking back at all encoder states via the heatmap.',
+    takeaway: 'Seq2seq + attention: decoder queries encoder memory at every output step.',
+  },
+  'bert-transformers': {
+    whatYouSee: 'Attention heatmap + embedding space.',
+    tryThis: 'Swap "word vectors" for "context-dependent vectors": "bank" has two different points.',
+    takeaway: 'BERT/GPT = transformer + self-supervised pretraining + fine-tuning for downstream tasks.',
+  },
+}
+
+function InteractiveGuide({ topicId }: { topicId: string }) {
+  const g = INTERACTIVE_GUIDES[topicId]
+  if (!g) return null
+  return (
+    <div className="mb-6 grid gap-3 md:grid-cols-3">
+      <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
+        <div className="flex items-center gap-2 mb-2 text-primary font-semibold text-sm">
+          <Sparkle size={16} weight="fill" />
+          What you're looking at
+        </div>
+        <p className="text-sm text-muted-foreground leading-relaxed">{g.whatYouSee}</p>
+      </div>
+      <div className="rounded-xl border-2 border-violet/30 bg-violet/5 p-4">
+        <div className="flex items-center gap-2 mb-2 text-violet font-semibold text-sm">
+          <Lightbulb size={16} weight="fill" />
+          Try this
+        </div>
+        <p className="text-sm text-muted-foreground leading-relaxed">{g.tryThis}</p>
+      </div>
+      <div className="rounded-xl border-2 border-lime/30 bg-lime/5 p-4">
+        <div className="flex items-center gap-2 mb-2 text-lime font-semibold text-sm">
+          <Target size={16} weight="fill" />
+          Key takeaway
+        </div>
+        <p className="text-sm text-muted-foreground leading-relaxed">{g.takeaway}</p>
+      </div>
+    </div>
+  )
 }

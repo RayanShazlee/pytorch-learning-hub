@@ -11,6 +11,8 @@ import { PyTorchLogoVisual } from './visuals/PyTorchLogoVisual'
 import { TensorOperationVisual } from './visuals/TensorOperationVisual'
 import { LayersFlowVisual } from './visuals/LayersFlowVisual'
 import { ActivationFunctionVisual } from './visuals/ActivationFunctionVisual'
+import { BackpropVisualizer } from './visuals/BackpropVisualizer'
+import { OptimizerComparisonVisual } from './visuals/OptimizerComparisonVisual'
 
 interface LessonDetailProps {
   lesson: Lesson
@@ -114,20 +116,68 @@ export function LessonDetail({ lesson, onBack, onComplete, isCompleted }: Lesson
       case 'what-is-tensor':
         return (
           <div className="space-y-6">
-            <Card>
+            <Card className="bg-gradient-to-br from-cyan/5 to-secondary/5 border-cyan/20">
               <CardContent className="pt-6">
-                <h3 className="text-2xl font-bold mb-4">Understanding Tensors</h3>
+                <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-cyan to-secondary bg-clip-text text-transparent">
+                  What is a Tensor? 📦
+                </h3>
                 <div className="prose prose-lg max-w-none space-y-4">
-                  <p>
-                    A <strong>tensor</strong> is like a magical container that holds numbers! Think of it like:
+                  <p className="text-lg text-center">
+                    A <strong>tensor</strong> is a magical container that holds numbers! Everything in AI — images, sounds, words — gets turned into tensors so the computer can understand it! ✨
                   </p>
-                  <ul className="space-y-2">
-                    <li>📝 <strong>1D Tensor</strong>: A list of numbers (like your grocery list!)</li>
-                    <li>📊 <strong>2D Tensor</strong>: A table of numbers (like a spreadsheet or checkerboard!)</li>
-                    <li>📦 <strong>3D Tensor</strong>: Stacked tables (like a stack of papers or video frames!)</li>
-                  </ul>
-                  <p>
-                    In PyTorch, we use tensors to store everything - images, sounds, text, and more!
+                  
+                  <div className="bg-gradient-to-r from-cyan/10 to-cyan/5 p-6 rounded-xl border-2 border-cyan/30">
+                    <h4 className="font-bold text-xl mb-3">🎯 Think of it like building blocks:</h4>
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-4 bg-card p-4 rounded-lg">
+                        <div className="text-4xl">📏</div>
+                        <div>
+                          <p className="font-bold text-base">0D Tensor = A Single Number (Scalar)</p>
+                          <p className="text-sm text-muted-foreground">Just one value, like your age: <span className="font-mono bg-muted px-2 rounded">12</span></p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 bg-card p-4 rounded-lg">
+                        <div className="text-4xl">📝</div>
+                        <div>
+                          <p className="font-bold text-base">1D Tensor = A List (Vector)</p>
+                          <p className="text-sm text-muted-foreground">A row of numbers: <span className="font-mono bg-muted px-2 rounded">[5, 12, 8, 3, 19]</span></p>
+                          <p className="text-xs text-muted-foreground mt-1">Like your scores on 5 different tests!</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 bg-card p-4 rounded-lg">
+                        <div className="text-4xl">📊</div>
+                        <div>
+                          <p className="font-bold text-base">2D Tensor = A Table (Matrix)</p>
+                          <p className="text-sm text-muted-foreground">Rows AND columns: <span className="font-mono bg-muted px-2 rounded">[[1,2],[3,4],[5,6]]</span></p>
+                          <p className="text-xs text-muted-foreground mt-1">Like a black-and-white photo — each number is how bright a pixel is!</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 bg-card p-4 rounded-lg">
+                        <div className="text-4xl">📦</div>
+                        <div>
+                          <p className="font-bold text-base">3D Tensor = Stacked Tables (Volume)</p>
+                          <p className="text-sm text-muted-foreground">Multiple tables stacked: 3 layers for Red, Green, Blue</p>
+                          <p className="text-xs text-muted-foreground mt-1">A color photo is a 3D tensor! 🌈</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="bg-card p-5 rounded-xl border-2 border-pink/30">
+                      <div className="text-3xl mb-2">🖼️</div>
+                      <h4 className="font-bold text-lg text-pink mb-2">Images as Tensors</h4>
+                      <p className="text-xs">A 224×224 color photo = a tensor of shape [3, 224, 224] — that's 150,528 numbers!</p>
+                    </div>
+                    <div className="bg-card p-5 rounded-xl border-2 border-violet/30">
+                      <div className="text-3xl mb-2">🔤</div>
+                      <h4 className="font-bold text-lg text-violet mb-2">Words as Tensors</h4>
+                      <p className="text-xs">Each word gets converted to a list of ~100-300 numbers that capture its meaning!</p>
+                    </div>
+                  </div>
+
+                  <p className="text-center text-muted-foreground">
+                    Try the interactive playground below to build your own tensors! 👇
                   </p>
                 </div>
               </CardContent>
@@ -270,20 +320,71 @@ export function LessonDetail({ lesson, onBack, onComplete, isCompleted }: Lesson
       case 'what-is-neural-network':
         return (
           <div className="space-y-6">
-            <Card>
+            <Card className="bg-gradient-to-br from-coral/5 to-violet/5 border-coral/20">
               <CardContent className="pt-6">
-                <h3 className="text-2xl font-bold mb-4">Neural Networks Explained</h3>
+                <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-coral to-violet bg-clip-text text-transparent">
+                  Neural Networks: How Computers Think! 🧠
+                </h3>
                 <div className="prose prose-lg max-w-none space-y-4">
-                  <p>
-                    A <strong>neural network</strong> is like a team of friends passing a ball! Each friend (neuron) catches the ball, does something with it, and passes it to the next friend.
+                  <p className="text-lg text-center">
+                    A <strong>neural network</strong> is inspired by the human brain! It's made of tiny "neurons" connected together in layers, passing information along like a team relay. 🏃‍♂️➡️🏃‍♀️➡️🏃
                   </p>
-                  <ul className="space-y-2">
-                    <li>🎯 <strong>Input Layer</strong>: Where your data starts (like a picture of a cat)</li>
-                    <li>🔄 <strong>Hidden Layers</strong>: Where the magic happens! Each layer finds patterns</li>
-                    <li>✨ <strong>Output Layer</strong>: The final answer (like "This is a cat!")</li>
-                  </ul>
-                  <p>
-                    The network learns by adjusting how each neuron processes information!
+
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-cyan/10 to-cyan/5 p-6 rounded-xl border-l-4 border-cyan">
+                      <h4 className="font-bold text-xl text-cyan mb-2">🎯 Input Layer</h4>
+                      <p className="text-sm mb-1">Where your data starts its journey.</p>
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Example:</strong> For a 28×28 photo, each pixel becomes one input neuron — that's 784 neurons just for reading the image!
+                      </p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-violet/10 to-violet/5 p-6 rounded-xl border-l-4 border-violet">
+                      <h4 className="font-bold text-xl text-violet mb-2">🔮 Hidden Layers (The Thinking Part!)</h4>
+                      <p className="text-sm mb-2">This is where the magic happens. Each layer spots increasingly complex patterns:</p>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="bg-card p-2 rounded text-center">
+                          <p className="text-lg mb-1">👀</p>
+                          <p className="font-bold">Layer 1</p>
+                          <p className="text-muted-foreground">Finds edges & lines</p>
+                        </div>
+                        <div className="bg-card p-2 rounded text-center">
+                          <p className="text-lg mb-1">🔷</p>
+                          <p className="font-bold">Layer 2</p>
+                          <p className="text-muted-foreground">Combines into shapes</p>
+                        </div>
+                        <div className="bg-card p-2 rounded text-center">
+                          <p className="text-lg mb-1">🐱</p>
+                          <p className="font-bold">Layer 3</p>
+                          <p className="text-muted-foreground">Recognizes objects!</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-lime/10 to-lime/5 p-6 rounded-xl border-l-4 border-lime">
+                      <h4 className="font-bold text-xl text-lime mb-2">✨ Output Layer</h4>
+                      <p className="text-sm mb-1">The final answer! One neuron per possible category.</p>
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Example:</strong> For "cat vs dog", you have 2 output neurons. The brighter one wins: "90% cat, 10% dog → It's a cat!"
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-card p-6 rounded-xl border-2 border-pink/30">
+                    <h4 className="font-bold text-xl text-pink mb-3">🔗 How neurons connect</h4>
+                    <p className="text-sm mb-2">
+                      Each neuron receives numbers, multiplies them by <strong>weights</strong> (how important each input is), adds them up, and passes the result through an <strong>activation function</strong>.
+                    </p>
+                    <div className="bg-muted/50 p-3 rounded-lg font-mono text-xs text-center">
+                      output = activation(weight₁ × input₁ + weight₂ × input₂ + ... + bias)
+                    </div>
+                    <p className="text-xs mt-2 text-muted-foreground">
+                      Training adjusts the weights until the network gives correct answers! 🎯
+                    </p>
+                  </div>
+
+                  <p className="text-center text-muted-foreground">
+                    Watch the neural network in action below — see how data flows and neurons light up! 👇
                   </p>
                 </div>
               </CardContent>
@@ -465,21 +566,67 @@ export function LessonDetail({ lesson, onBack, onComplete, isCompleted }: Lesson
       case 'training-intro':
         return (
           <div className="space-y-6">
-            <Card>
+            <Card className="bg-gradient-to-br from-lime/5 to-cyan/5 border-lime/20">
               <CardContent className="pt-6">
-                <h3 className="text-2xl font-bold mb-4">Training Your Model</h3>
+                <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-lime to-cyan bg-clip-text text-transparent">
+                  Training Your First Model! 🎓
+                </h3>
                 <div className="prose prose-lg max-w-none space-y-4">
-                  <p>
-                    <strong>Training</strong> is how your AI learns! It's like practicing a sport:
+                  <p className="text-lg text-center">
+                    <strong>Training</strong> is how your AI learns from examples — just like practicing a sport over and over until you get good! 🏀
                   </p>
-                  <ul className="space-y-2">
-                    <li>🎓 <strong>Examples</strong>: You show the AI lots of examples (like showing pictures of cats)</li>
-                    <li>🎯 <strong>Guessing</strong>: The AI makes guesses about what it sees</li>
-                    <li>📉 <strong>Learning from Mistakes</strong>: It learns from wrong guesses and gets better!</li>
-                    <li>🔄 <strong>Epochs</strong>: Each time it looks at all examples is called an "epoch"</li>
-                  </ul>
-                  <p>
-                    The <strong>learning rate</strong> controls how fast the AI learns. Too fast and it might miss important details. Too slow and it takes forever!
+                  
+                  <div className="bg-gradient-to-r from-cyan/10 to-cyan/5 p-6 rounded-xl border-2 border-cyan/30">
+                    <h4 className="font-bold text-xl mb-3">🔄 The Training Loop</h4>
+                    <p className="text-sm mb-3">Every AI learns by repeating four simple steps thousands of times:</p>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      <div className="bg-card p-4 rounded-lg border">
+                        <p className="font-semibold text-sm mb-1">1️⃣ Show Examples</p>
+                        <p className="text-xs text-muted-foreground">Feed the model a batch of training data (images, text, numbers)</p>
+                      </div>
+                      <div className="bg-card p-4 rounded-lg border">
+                        <p className="font-semibold text-sm mb-1">2️⃣ Make Predictions</p>
+                        <p className="text-xs text-muted-foreground">The model guesses an answer for each example</p>
+                      </div>
+                      <div className="bg-card p-4 rounded-lg border">
+                        <p className="font-semibold text-sm mb-1">3️⃣ Check Mistakes</p>
+                        <p className="text-xs text-muted-foreground">Compare predictions to correct answers — this is the "loss"</p>
+                      </div>
+                      <div className="bg-card p-4 rounded-lg border">
+                        <p className="font-semibold text-sm mb-1">4️⃣ Improve Weights</p>
+                        <p className="text-xs text-muted-foreground">Adjust the network to make fewer mistakes next time</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="bg-card p-5 rounded-xl border-2 border-lime/30">
+                      <div className="text-3xl mb-2">🔁</div>
+                      <h4 className="font-bold text-base text-lime mb-2">Epochs</h4>
+                      <p className="text-xs">One <strong>epoch</strong> = the model sees every example once. More epochs = more practice! Usually 10–100 epochs.</p>
+                    </div>
+                    <div className="bg-card p-5 rounded-xl border-2 border-cyan/30">
+                      <div className="text-3xl mb-2">📦</div>
+                      <h4 className="font-bold text-base text-cyan mb-2">Batches</h4>
+                      <p className="text-xs">We don't show ALL examples at once. We split them into small <strong>batches</strong> (like 32 images at a time) — it's faster!</p>
+                    </div>
+                    <div className="bg-card p-5 rounded-xl border-2 border-violet/30">
+                      <div className="text-3xl mb-2">🎚️</div>
+                      <h4 className="font-bold text-base text-violet mb-2">Learning Rate</h4>
+                      <p className="text-xs">Controls how big the adjustments are. Too high = chaotic learning. Too low = painfully slow. Usually 0.001–0.01.</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-pink/10 to-coral/10 p-6 rounded-xl border-2 border-pink/30">
+                    <h4 className="font-bold text-lg mb-2">📉 What does "good training" look like?</h4>
+                    <p className="text-sm">
+                      The <strong>loss</strong> (mistake score) should steadily go DOWN as training progresses.
+                      If it goes up or stays flat, something's wrong — maybe the learning rate is too high, or the model needs more data!
+                    </p>
+                  </div>
+
+                  <p className="text-center text-muted-foreground">
+                    Try the Training Simulator below — adjust the learning rate and watch the loss curve! 👇
                   </p>
                 </div>
               </CardContent>
@@ -561,6 +708,7 @@ export function LessonDetail({ lesson, onBack, onComplete, isCompleted }: Lesson
                 </div>
               </CardContent>
             </Card>
+            <OptimizerComparisonVisual />
             <TrainingSimulator />
           </div>
         )
@@ -657,6 +805,7 @@ export function LessonDetail({ lesson, onBack, onComplete, isCompleted }: Lesson
                 </div>
               </CardContent>
             </Card>
+            <BackpropVisualizer />
             <NeuralNetworkVisualizer />
           </div>
         )

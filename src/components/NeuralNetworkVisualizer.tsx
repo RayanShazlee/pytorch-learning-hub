@@ -1,521 +1,450 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { motion } from 'framer-motion'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Play, Pause, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react'
-import { audioSynthesizer } from '@/lib/audioSynthesizer'
+import { Slider } from '@/components/ui/slider'
+import { Play, Pause, ArrowCounterClockwise, Lightbulb } from '@phosphor-icons/react'
+
+/**
+ * TF-Playground-style interactive neural network.
+ * Real forward/backprop on a small MLP, classifying 2D points.
+ * - Switch between datasets (circle, xor, spiral, moons)
+ * - Adjust hidden layer sizes (layer 2 may be turned off)
+ * - Adjust learning rate
+ * - See live decision boundary, weights (line thickness/color), node activations, and loss curve.
+ */
+
+type Dataset = 'circle' | 'xor' | 'spiral' | 'moons'
+
+const TANH = {
+  f: (x: number) => Math.tanh(x),
+  df: (x: number) => 1 - Math.tanh(x) ** 2,
+}
+
+function makeDataset(kind: Dataset, n = 180): { x: number; y: number; label: number }[] {
+  const pts: { x: number; y: number; label: number }[] = []
+  const rand = (a: number, b: number) => a + Math.random() * (b - a)
+  if (kind === 'circle') {
+    // Two concentric rings — a visually unambiguous "circle" problem
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2
+      const inner = i < n / 2
+      const r = inner ? rand(0.15, 0.35) : rand(0.65, 0.9)
+      pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, label: inner ? 1 : 0 })
+    }
+  } else if (kind === 'xor') {
+    for (let i = 0; i < n; i++) {
+      const x = rand(-0.9, 0.9)
+      const y = rand(-0.9, 0.9)
+      if (Math.abs(x) < 0.08 || Math.abs(y) < 0.08) continue
+      const label = x * y >= 0 ? 1 : 0
+      pts.push({ x, y, label })
+    }
+  } else if (kind === 'spiral') {
+    for (let i = 0; i < n / 2; i++) {
+      const t = (i / (n / 2)) * 4
+      const r = t * 0.22
+      const a = t * 2.2
+      pts.push({ x: r * Math.cos(a) + rand(-0.05, 0.05), y: r * Math.sin(a) + rand(-0.05, 0.05), label: 1 })
+      pts.push({ x: -r * Math.cos(a) + rand(-0.05, 0.05), y: -r * Math.sin(a) + rand(-0.05, 0.05), label: 0 })
+    }
+  } else {
+    for (let i = 0; i < n / 2; i++) {
+      const a = rand(0, Math.PI)
+      pts.push({ x: Math.cos(a) * 0.7 - 0.25, y: Math.sin(a) * 0.7 - 0.2 + rand(-0.08, 0.08), label: 1 })
+      pts.push({ x: Math.cos(a + Math.PI) * 0.7 + 0.25, y: Math.sin(a + Math.PI) * 0.7 + 0.2 + rand(-0.08, 0.08), label: 0 })
+    }
+  }
+  return pts
+}
+
+type Net = {
+  W: number[][][]
+  b: number[][]
+  sizes: number[]
+}
+
+function initNet(sizes: number[]): Net {
+  const W: number[][][] = []
+  const b: number[][] = []
+  for (let l = 0; l < sizes.length - 1; l++) {
+    const nIn = sizes[l]
+    const nOut = sizes[l + 1]
+    const limit = Math.sqrt(6 / (nIn + nOut))
+    W.push(
+      Array.from({ length: nOut }, () =>
+        Array.from({ length: nIn }, () => (Math.random() * 2 - 1) * limit)
+      )
+    )
+    b.push(Array.from({ length: nOut }, () => 0))
+  }
+  return { W, b, sizes }
+}
+
+function forward(net: Net, x: number[]): { acts: number[][]; zs: number[][] } {
+  const acts: number[][] = [x]
+  const zs: number[][] = []
+  let a = x
+  const L = net.sizes.length - 1
+  for (let l = 0; l < L; l++) {
+    const z: number[] = []
+    const out: number[] = []
+    for (let i = 0; i < net.sizes[l + 1]; i++) {
+      let s = net.b[l][i]
+      for (let j = 0; j < net.sizes[l]; j++) s += net.W[l][i][j] * a[j]
+      z.push(s)
+      if (l === L - 1) out.push(1 / (1 + Math.exp(-s)))
+      else out.push(TANH.f(s))
+    }
+    zs.push(z)
+    acts.push(out)
+    a = out
+  }
+  return { acts, zs }
+}
+
+function trainStep(net: Net, batch: { x: number; y: number; label: number }[], lr: number): number {
+  const L = net.sizes.length - 1
+  const gradW = net.W.map((M) => M.map((row) => row.map(() => 0)))
+  const gradB = net.b.map((row) => row.map(() => 0))
+  let lossSum = 0
+  for (const p of batch) {
+    const { acts, zs } = forward(net, [p.x, p.y])
+    const yHat = acts[acts.length - 1][0]
+    const y = p.label
+    const eps = 1e-7
+    lossSum += -(y * Math.log(yHat + eps) + (1 - y) * Math.log(1 - yHat + eps))
+
+    let delta: number[] = [yHat - y]
+    for (let l = L - 1; l >= 0; l--) {
+      for (let i = 0; i < net.sizes[l + 1]; i++) {
+        gradB[l][i] += delta[i]
+        for (let j = 0; j < net.sizes[l]; j++) {
+          gradW[l][i][j] += delta[i] * acts[l][j]
+        }
+      }
+      if (l > 0) {
+        const newDelta: number[] = Array(net.sizes[l]).fill(0)
+        for (let j = 0; j < net.sizes[l]; j++) {
+          let s = 0
+          for (let i = 0; i < net.sizes[l + 1]; i++) s += net.W[l][i][j] * delta[i]
+          newDelta[j] = s * TANH.df(zs[l - 1][j])
+        }
+        delta = newDelta
+      }
+    }
+  }
+  const n = batch.length
+  for (let l = 0; l < L; l++) {
+    for (let i = 0; i < net.sizes[l + 1]; i++) {
+      net.b[l][i] -= (lr * gradB[l][i]) / n
+      for (let j = 0; j < net.sizes[l]; j++) {
+        net.W[l][i][j] -= (lr * gradW[l][i][j]) / n
+      }
+    }
+  }
+  return lossSum / n
+}
+
+// Mean |activation| across the dataset for each node — drives node brightness.
+function sampleActivations(net: Net, data: { x: number; y: number }[]): number[][] {
+  const sums: number[][] = net.sizes.map((n) => Array(n).fill(0))
+  for (const p of data) {
+    const { acts } = forward(net, [p.x, p.y])
+    for (let l = 0; l < net.sizes.length; l++)
+      for (let i = 0; i < net.sizes[l]; i++) sums[l][i] += Math.abs(acts[l][i])
+  }
+  return sums.map((row) => row.map((v) => v / data.length))
+}
 
 export function NeuralNetworkVisualizer() {
-  const [isAnimating, setIsAnimating] = useState(false)
-  const [activeLayer, setActiveLayer] = useState(0)
-  const [soundEnabled, setSoundEnabled] = useState(true)
-  const previousLayerRef = useRef(-1)
+  const [dataset, setDataset] = useState<Dataset>('circle')
+  const [h1, setH1] = useState(5)
+  const [h2, setH2] = useState(4)
+  const [lr, setLr] = useState(0.1)
+  const [running, setRunning] = useState(false)
+  const [epoch, setEpoch] = useState(0)
+  const [loss, setLoss] = useState(0.7)
+  const [lossHistory, setLossHistory] = useState<number[]>([])
+  const data = useMemo(() => makeDataset(dataset), [dataset])
 
-  const layers = [
-    { 
-      name: 'Input', 
-      nodes: 3, 
-      color: 'oklch(0.70 0.28 340)', 
-      glowColor: 'rgba(255, 40, 160, 1)',
-      gradient: 'linear-gradient(135deg, oklch(0.70 0.28 340), oklch(0.80 0.24 350))'
-    },
-    { 
-      name: 'Hidden 1', 
-      nodes: 5, 
-      color: 'oklch(0.62 0.28 300)', 
-      glowColor: 'rgba(160, 70, 255, 1)',
-      gradient: 'linear-gradient(135deg, oklch(0.62 0.28 300), oklch(0.72 0.24 280))'
-    },
-    { 
-      name: 'Hidden 2', 
-      nodes: 4, 
-      color: 'oklch(0.72 0.26 200)', 
-      glowColor: 'rgba(0, 200, 255, 1)',
-      gradient: 'linear-gradient(135deg, oklch(0.72 0.26 200), oklch(0.82 0.22 180))'
-    },
-    { 
-      name: 'Output', 
-      nodes: 2, 
-      color: 'oklch(0.78 0.26 130)', 
-      glowColor: 'rgba(100, 255, 120, 1)',
-      gradient: 'linear-gradient(135deg, oklch(0.78 0.26 130), oklch(0.85 0.24 110))'
-    },
-  ]
+  // Filter zero-size layers so [2, 5, 0, 1] becomes [2, 5, 1].
+  const sizes = useMemo(() => [2, ...[h1, h2].filter((n) => n > 0), 1], [h1, h2])
 
-  const nodeActivations = useMemo(() => {
-    return layers.map((layer) => 
-      Array.from({ length: layer.nodes }, () => Math.random() * 0.6 + 0.4)
-    )
-  }, [layers.length])
+  const netRef = useRef<Net>(initNet(sizes))
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  const reset = useCallback(() => {
+    netRef.current = initNet(sizes)
+    setEpoch(0)
+    setLoss(0.7)
+    setLossHistory([])
+  }, [sizes])
 
   useEffect(() => {
-    audioSynthesizer.setEnabled(soundEnabled)
-  }, [soundEnabled])
+    reset()
+  }, [sizes, dataset, reset])
 
   useEffect(() => {
-    if (!isAnimating) return
+    if (!running) return
+    const id = setInterval(() => {
+      const l = trainStep(netRef.current, data, lr)
+      setEpoch((e) => e + 1)
+      setLoss(l)
+      setLossHistory((h) => {
+        const n = [...h, l]
+        return n.length > 240 ? n.slice(-240) : n
+      })
+    }, 35)
+    return () => clearInterval(id)
+  }, [running, data, lr])
 
-    const interval = setInterval(() => {
-      setActiveLayer((prev) => {
-        if (prev >= layers.length - 1) {
-          return 0
+  // Draw decision boundary + points.
+  useEffect(() => {
+    const c = canvasRef.current
+    if (!c) return
+    const ctx = c.getContext('2d')!
+    const W = c.width
+    const H = c.height
+    const RES = 80
+    const cell = W / RES
+
+    const img = ctx.createImageData(W, H)
+    for (let gy = 0; gy < RES; gy++) {
+      for (let gx = 0; gx < RES; gx++) {
+        const px = (gx / (RES - 1)) * 2 - 1
+        const py = (gy / (RES - 1)) * 2 - 1
+        const { acts } = forward(netRef.current, [px, py])
+        const v = acts[acts.length - 1][0]
+        // Blue -> white -> orange lerp for a crisp boundary feel
+        const r = Math.round(37 * (1 - v) + 249 * v)
+        const g = Math.round(99 * (1 - v) + 115 * v)
+        const b = Math.round(235 * (1 - v) + 22 * v)
+        // Darker band right at the boundary
+        const band = Math.abs(v - 0.5) < 0.02 ? 0.55 : 1
+        const sr = Math.round(r * band)
+        const sg = Math.round(g * band)
+        const sb = Math.round(b * band)
+        for (let sy = 0; sy < cell; sy++) {
+          for (let sx = 0; sx < cell; sx++) {
+            const ix = Math.floor(gx * cell + sx)
+            const iy = Math.floor(gy * cell + sy)
+            const idx = (iy * W + ix) * 4
+            img.data[idx] = sr
+            img.data[idx + 1] = sg
+            img.data[idx + 2] = sb
+            img.data[idx + 3] = 200
+          }
         }
-        return prev + 1
-      })
-    }, 1200)
-
-    return () => clearInterval(interval)
-  }, [isAnimating, layers.length])
-
-  useEffect(() => {
-    if (!isAnimating || activeLayer === previousLayerRef.current) return
-    
-    previousLayerRef.current = activeLayer
-
-    if (soundEnabled) {
-      const currentLayer = layers[activeLayer]
-      audioSynthesizer.playLayerActivation(activeLayer, currentLayer.nodes)
-
-      if (activeLayer > 0) {
-        const avgActivation = nodeActivations[activeLayer].reduce((a, b) => a + b, 0) / nodeActivations[activeLayer].length
-        audioSynthesizer.playSignalFlow(activeLayer - 1, activeLayer, avgActivation)
-      }
-
-      nodeActivations[activeLayer].forEach((activation, nodeIdx) => {
-        setTimeout(() => {
-          audioSynthesizer.playNeuronPulse(activation, activeLayer, nodeIdx)
-        }, nodeIdx * 80 + 600)
-      })
-    }
-  }, [activeLayer, isAnimating, soundEnabled, layers, nodeActivations])
-
-  const renderConnections = (fromLayer: number, toLayer: number, svgWidth: number, svgHeight: number) => {
-    const fromNodes = layers[fromLayer].nodes
-    const toNodes = layers[toLayer].nodes
-    const connections = []
-    
-    const nodeSize = 56
-    const nodeRadius = nodeSize / 2
-    const nodeGap = 12
-
-    const fromTotalHeight = fromNodes * nodeSize + (fromNodes - 1) * nodeGap
-    const toTotalHeight = toNodes * nodeSize + (toNodes - 1) * nodeGap
-    
-    const fromStartY = (svgHeight - fromTotalHeight) / 2
-    const toStartY = (svgHeight - toTotalHeight) / 2
-
-    for (let i = 0; i < fromNodes; i++) {
-      for (let j = 0; j < toNodes; j++) {
-        const isActive = isAnimating && activeLayer === fromLayer
-        const connectionId = `conn-${fromLayer}-${toLayer}-${i}-${j}`
-        
-        const fromCenterY = fromStartY + i * (nodeSize + nodeGap) + nodeRadius
-        const toCenterY = toStartY + j * (nodeSize + nodeGap) + nodeRadius
-        
-        const dx = svgWidth
-        const dy = toCenterY - fromCenterY
-        const angle = Math.atan2(dy, dx)
-        
-        const x1 = nodeRadius + nodeRadius * Math.cos(angle)
-        const y1 = fromCenterY + nodeRadius * Math.sin(angle)
-        const x2 = svgWidth - nodeRadius + nodeRadius * Math.cos(angle)
-        const y2 = toCenterY - nodeRadius * Math.sin(angle)
-        
-        const pathLength = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
-        const delay = i * 0.08 + j * 0.04
-        
-        const gradientId = `gradient-${fromLayer}-${toLayer}-${i}-${j}`
-        
-        connections.push(
-          <g key={connectionId}>
-            <defs>
-              <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor={layers[fromLayer].color} stopOpacity="0.4" />
-                <stop offset="50%" stopColor={layers[toLayer].color} stopOpacity="0.4" />
-                <stop offset="100%" stopColor={layers[toLayer].color} stopOpacity="0.4" />
-              </linearGradient>
-              <linearGradient id={`${gradientId}-active`} x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor={layers[fromLayer].color} stopOpacity="1" />
-                <stop offset="50%" stopColor={layers[toLayer].color} stopOpacity="1" />
-                <stop offset="100%" stopColor={layers[toLayer].color} stopOpacity="1" />
-              </linearGradient>
-            </defs>
-            
-            <motion.line
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke={`url(#${gradientId})`}
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              opacity={0.3}
-            />
-            
-            {isActive && (
-              <>
-                <motion.line
-                  x1={x1}
-                  y1={y1}
-                  x2={x2}
-                  y2={y2}
-                  stroke={`url(#${gradientId}-active)`}
-                  strokeWidth={5}
-                  strokeLinecap="round"
-                  strokeDasharray={pathLength}
-                  strokeDashoffset={pathLength}
-                  animate={{
-                    strokeDashoffset: [pathLength, 0],
-                    opacity: [0, 1, 0.6]
-                  }}
-                  transition={{
-                    duration: 0.6,
-                    repeat: Infinity,
-                    delay: delay,
-                    ease: "easeOut",
-                    repeatDelay: 0.6
-                  }}
-                  style={{
-                    filter: `drop-shadow(0 0 6px ${layers[fromLayer].glowColor}) drop-shadow(0 0 3px ${layers[toLayer].glowColor})`
-                  }}
-                />
-                
-                <motion.circle
-                  r={5}
-                  fill={layers[fromLayer].glowColor}
-                  animate={{
-                    cx: [x1, x2],
-                    cy: [y1, y2],
-                    opacity: [1, 1, 0],
-                    scale: [1, 1.4, 0.4]
-                  }}
-                  transition={{
-                    duration: 0.6,
-                    repeat: Infinity,
-                    delay: delay,
-                    ease: "easeOut",
-                    repeatDelay: 0.6
-                  }}
-                  style={{
-                    filter: `drop-shadow(0 0 8px ${layers[fromLayer].glowColor})`
-                  }}
-                />
-                
-                <motion.circle
-                  r={3}
-                  fill={layers[toLayer].glowColor}
-                  animate={{
-                    cx: [x1, x2],
-                    cy: [y1, y2],
-                    opacity: [1, 1, 0],
-                    scale: [1, 1.6, 0.3]
-                  }}
-                  transition={{
-                    duration: 0.6,
-                    repeat: Infinity,
-                    delay: delay + 0.15,
-                    ease: "easeOut",
-                    repeatDelay: 0.6
-                  }}
-                  style={{
-                    filter: `drop-shadow(0 0 10px ${layers[toLayer].glowColor})`
-                  }}
-                />
-              </>
-            )}
-          </g>
-        )
       }
     }
-    return connections
+    ctx.putImageData(img, 0, 0)
+
+    // Axis lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(W / 2, 0)
+    ctx.lineTo(W / 2, H)
+    ctx.moveTo(0, H / 2)
+    ctx.lineTo(W, H / 2)
+    ctx.stroke()
+
+    // Data points
+    for (const p of data) {
+      const cx = ((p.x + 1) / 2) * W
+      const cy = ((p.y + 1) / 2) * H
+      ctx.beginPath()
+      ctx.arc(cx, cy, 4.5, 0, Math.PI * 2)
+      ctx.fillStyle = p.label === 1 ? '#f97316' : '#2563eb'
+      ctx.fill()
+      ctx.lineWidth = 1.5
+      ctx.strokeStyle = 'white'
+      ctx.stroke()
+    }
+  }, [data, epoch])
+
+  const net = netRef.current
+  const nodeActs = useMemo(() => sampleActivations(net, data), [data, epoch, net])
+
+  const SVG_W = 640
+  const SVG_H = 300
+  const layerXs = sizes.map((_, i) => 70 + i * ((SVG_W - 140) / Math.max(1, sizes.length - 1)))
+  const nodeY = (layer: number, idx: number) => {
+    const n = sizes[layer]
+    return (SVG_H / (n + 1)) * (idx + 1)
   }
 
+  const lossPath = (() => {
+    if (lossHistory.length < 2) return ''
+    const max = Math.max(...lossHistory, 0.7)
+    const min = Math.min(...lossHistory, 0)
+    return lossHistory
+      .map((v, i) => {
+        const x = (i / (lossHistory.length - 1)) * 200
+        const y = 60 - ((v - min) / Math.max(0.01, max - min)) * 60
+        return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
+      })
+      .join(' ')
+  })()
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Neural Network Flow</CardTitle>
-        <CardDescription>
-          Watch light flow through the neural network as signals pass between neurons, with audio feedback for each activation
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="relative bg-gradient-to-br from-muted/30 to-muted/10 p-8 rounded-xl min-h-[400px] overflow-x-auto" style={{
-          background: `
-            radial-gradient(circle at 10% 20%, rgba(255, 40, 160, 0.08) 0%, transparent 25%),
-            radial-gradient(circle at 90% 25%, rgba(160, 70, 255, 0.08) 0%, transparent 25%),
-            radial-gradient(circle at 25% 70%, rgba(0, 200, 255, 0.08) 0%, transparent 25%),
-            radial-gradient(circle at 75% 75%, rgba(100, 255, 120, 0.08) 0%, transparent 25%),
-            radial-gradient(circle at 50% 50%, rgba(255, 180, 0, 0.06) 0%, transparent 30%),
-            repeating-linear-gradient(45deg, transparent, transparent 60px, rgba(255, 40, 160, 0.02) 60px, rgba(255, 40, 160, 0.02) 120px),
-            repeating-linear-gradient(-45deg, transparent, transparent 60px, rgba(0, 200, 255, 0.02) 60px, rgba(0, 200, 255, 0.02) 120px),
-            linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(250,250,255,0.95) 100%)
-          `
-        }}>
-          <div className="flex items-center justify-between gap-12 min-w-[900px]">
-            {layers.map((layer, layerIdx) => {
-              const maxNodes = Math.max(...layers.map(l => l.nodes))
-              const nodeSize = 56
-              const nodeGap = 12
-              const containerHeight = maxNodes * nodeSize + (maxNodes - 1) * nodeGap
-              const svgWidth = 96
-              
-              return (
-                <div key={layerIdx} className="flex-1 flex flex-col items-center">
-                  <div className="text-sm font-semibold text-center mb-4">
-                    {layer.name}
-                  </div>
-                  <div
-                    className="relative flex flex-col items-center justify-center"
-                    style={{ height: containerHeight }}
-                  >
-                    {layerIdx > 0 && (
-                      <svg
-                        className="absolute top-0 right-full pointer-events-none"
-                        width={svgWidth}
-                        height={containerHeight}
-                        style={{
-                          transform: 'translateX(calc(50% + 28px))',
-                          overflow: 'visible'
-                        }}
-                        viewBox={`0 0 ${svgWidth} ${containerHeight}`}
-                        preserveAspectRatio="none"
-                      >
-                        {renderConnections(layerIdx - 1, layerIdx, svgWidth, containerHeight)}
-                      </svg>
-                    )}
+    <div className="space-y-4">
+      {/* Guide */}
+      <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-3 flex gap-2 items-start">
+        <Lightbulb size={18} className="text-violet-500 mt-0.5 shrink-0" />
+        <div className="text-xs text-muted-foreground leading-relaxed">
+          <strong className="text-foreground">Try this:</strong> press <em>Train</em>, then switch datasets.
+          A 2-5-4-1 network solves <em>circle</em> and <em>moons</em> easily. <em>XOR</em> needs hidden ≥ 2. <em>Spiral</em> is
+          famously hard — try pushing both hidden layers to 8. Line thickness = weight magnitude; node size/brightness = mean activation strength.
+        </div>
+      </div>
 
-                    <div className="flex flex-col gap-3 items-center">
-                      {Array.from({ length: layer.nodes }, (_, nodeIdx) => {
-                        const isNodeActive = isAnimating && activeLayer === layerIdx
-                        const isNodeReceiving = isAnimating && activeLayer === layerIdx - 1
-                        const activation = nodeActivations[layerIdx][nodeIdx]
-                        const pulseIntensity = activation
-                        const glowSize = 20 + (activation * 20)
-                        const scaleMax = 1 + (activation * 0.2)
-                        const rippleScale = 1.8 + (activation * 0.5)
-                        const nodeDelay = nodeIdx * 0.08
-                        
-                        return (
-                          <motion.div
-                            key={nodeIdx}
-                            className="relative"
-                          >
-                            <motion.div
-                              className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-sm relative z-10"
-                              style={{
-                                background: layer.gradient,
-                                border: '2px solid rgba(255,255,255,0.3)'
-                              }}
-                              animate={(isNodeActive || isNodeReceiving) ? {
-                                scale: [1, scaleMax, 1],
-                                boxShadow: [
-                                  `0 0 ${glowSize * 0.4}px ${layer.glowColor}, inset 0 0 ${glowSize * 0.2}px ${layer.glowColor}`,
-                                  `0 0 ${glowSize * 1.2}px ${layer.glowColor}, 0 0 ${glowSize / 2}px ${layer.glowColor}, inset 0 0 ${glowSize * 0.6}px ${layer.glowColor}`,
-                                  `0 0 ${glowSize * 0.4}px ${layer.glowColor}, inset 0 0 ${glowSize * 0.2}px ${layer.glowColor}`,
-                                ],
-                                opacity: [0.85, 1, 0.85],
-                                filter: [
-                                  'brightness(1.1) saturate(1.2)',
-                                  `brightness(${1.3 + activation * 0.4}) saturate(1.5)`,
-                                  'brightness(1.1) saturate(1.2)'
-                                ]
-                              } : {
-                                scale: 1,
-                                boxShadow: `0 0 ${glowSize * 0.2}px ${layer.glowColor}`,
-                                opacity: 0.7,
-                                filter: 'brightness(0.9) saturate(1)'
-                              }}
-                              transition={{
-                                duration: 1.2,
-                                repeat: (isNodeActive || isNodeReceiving) ? Infinity : 0,
-                                delay: isNodeReceiving ? nodeDelay + 0.6 : nodeDelay,
-                                ease: "easeInOut",
-                                repeatDelay: 0
-                              }}
-                            >
-                              <span className="relative z-10 drop-shadow-lg text-shadow">{nodeIdx + 1}</span>
-                              <motion.div
-                                className="absolute inset-0 rounded-full pointer-events-none"
-                                style={{
-                                  background: `radial-gradient(circle, rgba(255,255,255,${activation * 0.7}) 0%, rgba(255,255,255,${activation * 0.3}) 40%, transparent 70%)`,
-                                }}
-                                animate={(isNodeActive || isNodeReceiving) ? {
-                                  scale: [1, 1.3, 1],
-                                  opacity: [pulseIntensity * 0.7, pulseIntensity, pulseIntensity * 0.7],
-                                  rotate: [0, 180, 360]
-                                } : {
-                                  opacity: 0,
-                                }}
-                                transition={{
-                                  duration: 1.2,
-                                  repeat: (isNodeActive || isNodeReceiving) ? Infinity : 0,
-                                  delay: isNodeReceiving ? nodeDelay + 0.6 : nodeDelay,
-                                  ease: "linear",
-                                  repeatDelay: 0
-                                }}
-                              />
-                            </motion.div>
-                            
-                            {(isNodeActive || isNodeReceiving) && (
-                              <>
-                                <motion.div
-                                  className="absolute inset-0 rounded-full pointer-events-none"
-                                  style={{
-                                    background: `radial-gradient(circle, ${layer.glowColor}, transparent 70%)`,
-                                    opacity: 0.5 * pulseIntensity
-                                  }}
-                                  initial={{ scale: 1, opacity: 0.5 * pulseIntensity }}
-                                  animate={{
-                                    scale: [1, rippleScale, rippleScale + 0.3],
-                                    opacity: [0.5 * pulseIntensity, 0.2 * pulseIntensity, 0],
-                                  }}
-                                  transition={{
-                                    duration: 1.2,
-                                    repeat: Infinity,
-                                    delay: isNodeReceiving ? nodeDelay + 0.6 : nodeDelay,
-                                    ease: "easeOut",
-                                    repeatDelay: 0
-                                  }}
-                                />
-                                {activation > 0.65 && (
-                                  <motion.div
-                                    className="absolute inset-0 rounded-full pointer-events-none"
-                                    style={{
-                                      background: `radial-gradient(circle, ${layer.glowColor}, transparent 60%)`,
-                                      opacity: 0.4
-                                    }}
-                                    initial={{ scale: 1, opacity: 0.4 }}
-                                    animate={{
-                                      scale: [1, rippleScale + 0.4, rippleScale + 0.8],
-                                      opacity: [0.4, 0.2, 0],
-                                    }}
-                                    transition={{
-                                      duration: 1.5,
-                                      repeat: Infinity,
-                                      delay: (isNodeReceiving ? nodeDelay + 0.6 : nodeDelay) + 0.4,
-                                      ease: "easeOut",
-                                      repeatDelay: 0
-                                    }}
-                                  />
-                                )}
-                              </>
-                            )}
-                          </motion.div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
+      {/* Controls */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <Button size="sm" onClick={() => setRunning(!running)}>
+          {running ? <Pause size={14} className="mr-1" /> : <Play size={14} className="mr-1" />}
+          {running ? 'Pause' : 'Train'}
+        </Button>
+        <Button size="sm" variant="outline" onClick={reset}>
+          <ArrowCounterClockwise size={14} className="mr-1" /> Reset
+        </Button>
+        <div className="flex gap-1 ml-2">
+          {(['circle', 'xor', 'spiral', 'moons'] as Dataset[]).map((d) => (
+            <Button key={d} size="sm" variant={dataset === d ? 'default' : 'outline'} onClick={() => setDataset(d)}>
+              {d}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Network architecture */}
+        <div className="rounded-2xl border bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 p-3">
+          <div className="text-xs font-semibold text-muted-foreground mb-1">Network (live weights + activations)</div>
+          <svg viewBox={`0 0 ${SVG_W} ${SVG_H + 20}`} className="w-full h-auto">
+            {net.W.map((M, l) =>
+              M.map((row, i) =>
+                row.map((w, j) => {
+                  const x1 = layerXs[l]
+                  const x2 = layerXs[l + 1]
+                  const y1 = nodeY(l, j)
+                  const y2 = nodeY(l + 1, i)
+                  const mag = Math.min(1, Math.abs(w) / 2)
+                  const color = w >= 0 ? '#f97316' : '#2563eb'
+                  return (
+                    <line
+                      key={`e${l}-${i}-${j}`}
+                      x1={x1}
+                      y1={y1}
+                      x2={x2}
+                      y2={y2}
+                      stroke={color}
+                      strokeOpacity={0.15 + mag * 0.75}
+                      strokeWidth={0.5 + mag * 3.5}
+                    />
+                  )
+                })
               )
-            })}
-          </div>
+            )}
+            {sizes.map((n, l) =>
+              Array.from({ length: n }).map((_, i) => {
+                const act = nodeActs[l]?.[i] ?? 0
+                const intensity = Math.min(1, act)
+                const fill = l === 0 ? '#2563eb' : l === sizes.length - 1 ? '#f97316' : '#a855f7'
+                return (
+                  <g key={`n${l}-${i}`}>
+                    <circle
+                      cx={layerXs[l]}
+                      cy={nodeY(l, i)}
+                      r={14}
+                      fill="white"
+                      stroke="#0f172a"
+                      strokeOpacity={0.8}
+                      strokeWidth={1.5}
+                    />
+                    <circle
+                      cx={layerXs[l]}
+                      cy={nodeY(l, i)}
+                      r={4 + intensity * 8}
+                      fill={fill}
+                      fillOpacity={0.35 + intensity * 0.65}
+                    />
+                  </g>
+                )
+              })
+            )}
+            {sizes.map((n, l) => (
+              <text
+                key={`lbl${l}`}
+                x={layerXs[l]}
+                y={SVG_H + 14}
+                textAnchor="middle"
+                fontSize="11"
+                fill="currentColor"
+                opacity="0.6"
+              >
+                {l === 0 ? `input (${n})` : l === sizes.length - 1 ? `output (${n})` : `hidden (${n})`}
+              </text>
+            ))}
+          </svg>
         </div>
 
-        <div className="flex justify-center gap-3 flex-wrap">
-          <Button
-            onClick={() => {
-              const newState = !isAnimating
-              setIsAnimating(newState)
-              if (soundEnabled) {
-                if (newState) {
-                  audioSynthesizer.playStartSound()
-                } else {
-                  audioSynthesizer.playStopSound()
-                }
-              }
-            }}
-            size="lg"
-          >
-            {isAnimating ? (
-              <>
-                <Pause weight="fill" />
-                Pause Animation
-              </>
-            ) : (
-              <>
-                <Play weight="fill" />
-                Start Animation
-              </>
-            )}
-          </Button>
-          
-          <Button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            size="lg"
-            variant="outline"
-          >
-            {soundEnabled ? (
-              <>
-                <SpeakerHigh weight="fill" />
-                Sound On
-              </>
-            ) : (
-              <>
-                <SpeakerSlash weight="fill" />
-                Sound Off
-              </>
-            )}
-          </Button>
+        <div className="rounded-2xl border bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 p-3">
+          <div className="text-xs font-semibold text-muted-foreground mb-1">Decision boundary (live)</div>
+          <canvas ref={canvasRef} width={320} height={320} className="w-full h-auto rounded-lg bg-white" />
+          <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+            <span>🟦 class 0</span>
+            <span>🟧 class 1</span>
+          </div>
         </div>
+      </div>
 
-        <div className="bg-muted/30 rounded-xl p-6 space-y-4">
-          <div className="text-center">
-            <div className="text-lg font-semibold mb-2">
-              {isAnimating
-                ? `✨ Signals flowing through ${layers[activeLayer].name} layer!`
-                : '👆 Press start to watch light travel through the network'}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {isAnimating
-                ? 'Watch the glowing particles travel along connections and light up neurons! Listen to the neural signals as they flow through each layer. 🎵'
-                : 'Neural networks pass information from layer to layer, just like signals traveling through wires. Turn on sound to hear the neural activity!'}
-            </p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="rounded-xl border p-3">
+          <div className="text-xs text-muted-foreground mb-1">
+            Learning rate: <span className="font-mono">{lr.toFixed(3)}</span>
           </div>
-          
-          <div className="bg-background/50 rounded-lg p-4">
-            <div className="text-sm font-semibold mb-3 text-center">Layer Colors</div>
-            <div className="flex items-center justify-center gap-4 text-xs flex-wrap mb-4">
-              {layers.map((layer) => (
-                <div key={layer.name} className="flex items-center gap-2">
-                  <div 
-                    className="w-4 h-4 rounded-full shadow-lg" 
-                    style={{ 
-                      background: layer.gradient,
-                      boxShadow: `0 0 8px ${layer.glowColor}` 
-                    }}
-                  />
-                  <span className="text-muted-foreground">{layer.name}</span>
-                </div>
-              ))}
-            </div>
-            
-            <div className="text-sm font-semibold mb-3 text-center pt-2 border-t border-border/50">Neuron Activation Intensity</div>
-            <div className="flex items-center justify-center gap-4 text-xs flex-wrap">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full opacity-60" style={{ background: layers[0].gradient }} />
-                <span className="text-muted-foreground">Low (40-65%)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3.5 h-3.5 rounded-full opacity-80 shadow-sm" style={{ 
-                  background: layers[1].gradient,
-                  boxShadow: `0 0 4px ${layers[1].glowColor}` 
-                }} />
-                <span className="text-muted-foreground">Medium (65-80%)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full shadow-lg" style={{ 
-                  background: layers[2].gradient,
-                  boxShadow: `0 0 8px ${layers[2].glowColor}` 
-                }} />
-                <span className="text-muted-foreground">High (80-100%)</span>
-              </div>
-            </div>
-            <p className="text-xs text-center text-muted-foreground mt-3">
-              Higher activation = brighter glow, stronger pulse, larger ripples, and higher-pitched sound! 💫🌈
-            </p>
+          <Slider min={0.01} max={1} step={0.01} value={[lr]} onValueChange={(v) => setLr(v[0])} />
+        </div>
+        <div className="rounded-xl border p-3">
+          <div className="text-xs text-muted-foreground mb-1">
+            Hidden layer 1: <span className="font-mono">{h1}</span>
+          </div>
+          <Slider min={1} max={8} step={1} value={[h1]} onValueChange={(v) => setH1(v[0])} />
+        </div>
+        <div className="rounded-xl border p-3">
+          <div className="text-xs text-muted-foreground mb-1">
+            Hidden layer 2: <span className="font-mono">{h2 === 0 ? 'off' : h2}</span>
+          </div>
+          <Slider min={0} max={8} step={1} value={[h2]} onValueChange={(v) => setH2(v[0])} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="rounded-xl border p-3 flex items-center gap-4">
+          <div>
+            <div className="text-xs text-muted-foreground">epoch</div>
+            <div className="text-2xl font-mono font-bold">{epoch}</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">loss</div>
+            <div className="text-2xl font-mono font-bold text-violet-500">{loss.toFixed(4)}</div>
+          </div>
+          <div className="ml-auto text-right">
+            <div className="text-xs text-muted-foreground">arch</div>
+            <div className="text-sm font-mono font-semibold">{sizes.join('→')}</div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+        <div className="rounded-xl border p-3">
+          <div className="text-xs text-muted-foreground mb-1">loss curve</div>
+          <svg viewBox="0 0 200 64" className="w-full h-12">
+            <path d={lossPath} fill="none" stroke="#a855f7" strokeWidth={1.5} />
+          </svg>
+        </div>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        This is a <strong>real</strong> MLP trained in your browser with backprop. Line thickness = weight magnitude; color = sign (🟧 positive, 🟦 negative). Node size/opacity = mean activation magnitude across the dataset.
+      </p>
+    </div>
   )
 }

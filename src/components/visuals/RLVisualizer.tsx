@@ -1,224 +1,168 @@
-import { useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Play, Pause, ArrowCounterClockwise } from '@phosphor-icons/react'
 
-interface RLVisualizerProps {
-  isPlaying?: boolean
+/**
+ * Gridworld Q-learning.
+ * Agent learns to navigate from S (top-left) to G (bottom-right) while avoiding pits.
+ * Live-shows Q-values for each cell as 4 directional arrows.
+ */
+
+const ROWS = 5
+const COLS = 6
+const START = { r: 0, c: 0 }
+const GOAL = { r: 4, c: 5 }
+const PITS = [{ r: 2, c: 2 }, { r: 3, c: 4 }, { r: 1, c: 4 }]
+
+type Action = 0 | 1 | 2 | 3 // up, right, down, left
+const DELTAS: [number, number][] = [[-1, 0], [0, 1], [1, 0], [0, -1]]
+
+function isPit(r: number, c: number) {
+  return PITS.some((p) => p.r === r && p.c === c)
+}
+function isGoal(r: number, c: number) {
+  return r === GOAL.r && c === GOAL.c
 }
 
-export function RLVisualizer({ isPlaying = true }: RLVisualizerProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+function reward(r: number, c: number) {
+  if (isGoal(r, c)) return 10
+  if (isPit(r, c)) return -10
+  return -0.05
+}
+
+type QTable = number[][][] // [r][c][action]
+
+function initQ(): QTable {
+  return Array.from({ length: ROWS }, () => Array.from({ length: COLS }, () => [0, 0, 0, 0]))
+}
+
+export function RLVisualizer() {
+  const [Q, setQ] = useState<QTable>(() => initQ())
+  const [agent, setAgent] = useState({ r: START.r, c: START.c })
+  const [episode, setEpisode] = useState(0)
   const [totalReward, setTotalReward] = useState(0)
-  const [episode, setEpisode] = useState(1)
-  const animationRef = useRef<number>()
-  const timeRef = useRef(0)
-  const agentPosRef = useRef({ x: 0, y: 0 })
-  const targetPosRef = useRef({ x: 0, y: 0 })
-  const rewardRef = useRef(0)
+  const [running, setRunning] = useState(false)
+  const [epsilon, setEpsilon] = useState(0.3)
+  const alpha = 0.3
+  const gamma = 0.9
+
+  const reset = useCallback(() => {
+    setQ(initQ())
+    setAgent({ ...START })
+    setEpisode(0)
+    setTotalReward(0)
+  }, [])
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas || !isPlaying) return
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const width = canvas.width
-    const height = canvas.height
-
-    const gridSize = 5
-    const cellSize = Math.min(width, height - 100) / gridSize
-    const gridOffsetX = (width - gridSize * cellSize) / 2
-    const gridOffsetY = 50
-
-    agentPosRef.current = { x: 0, y: 0 }
-    targetPosRef.current = { x: gridSize - 1, y: gridSize - 1 }
-    rewardRef.current = 0
-
-    let stepDelay = 0
-    const stepInterval = 30
-
-    const obstacles = [
-      { x: 2, y: 1 },
-      { x: 2, y: 2 },
-      { x: 2, y: 3 },
-      { x: 3, y: 2 },
-    ]
-
-    const qValues: number[][][] = Array(gridSize).fill(null).map(() => 
-      Array(gridSize).fill(null).map(() => [0, 0, 0, 0])
-    )
-
-    const updateQValues = () => {
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          const distToTarget = Math.abs(targetPosRef.current.x - x) + Math.abs(targetPosRef.current.y - y)
-          const baseValue = 1 / (1 + distToTarget)
-          
-          qValues[y][x] = [
-            baseValue * (y > 0 ? 1 : 0.1),
-            baseValue * (x < gridSize - 1 ? 1 : 0.1),
-            baseValue * (y < gridSize - 1 ? 1 : 0.1),
-            baseValue * (x > 0 ? 1 : 0.1),
-          ]
+    if (!running) return
+    const id = setInterval(() => {
+      setQ((qprev) => {
+        const q = qprev.map((rr) => rr.map((cc) => [...cc])) as QTable
+        let cur = { ...agent }
+        // choose action eps-greedy
+        let a: Action
+        if (Math.random() < epsilon) {
+          a = Math.floor(Math.random() * 4) as Action
+        } else {
+          const qs = q[cur.r][cur.c]
+          const maxV = Math.max(...qs)
+          const bests = qs.map((v, i) => (v === maxV ? i : -1)).filter((i) => i >= 0)
+          a = bests[Math.floor(Math.random() * bests.length)] as Action
         }
-      }
-    }
+        const [dr, dc] = DELTAS[a]
+        const nr = Math.max(0, Math.min(ROWS - 1, cur.r + dr))
+        const nc = Math.max(0, Math.min(COLS - 1, cur.c + dc))
+        const rw = reward(nr, nc)
+        const maxNext = isGoal(nr, nc) || isPit(nr, nc) ? 0 : Math.max(...q[nr][nc])
+        q[cur.r][cur.c][a] += alpha * (rw + gamma * maxNext - q[cur.r][cur.c][a])
 
-    updateQValues()
-
-    const getBestAction = (x: number, y: number): number => {
-      const values = qValues[y][x]
-      return values.indexOf(Math.max(...values))
-    }
-
-    const moveAgent = () => {
-      const { x, y } = agentPosRef.current
-      
-      if (x === targetPosRef.current.x && y === targetPosRef.current.y) {
-        setEpisode(prev => prev + 1)
-        rewardRef.current += 10
-        setTotalReward(rewardRef.current)
-        agentPosRef.current = { x: 0, y: 0 }
-        return
-      }
-
-      const action = getBestAction(x, y)
-      let newX = x
-      let newY = y
-
-      switch (action) {
-        case 0: newY = Math.max(0, y - 1); break
-        case 1: newX = Math.min(gridSize - 1, x + 1); break
-        case 2: newY = Math.min(gridSize - 1, y + 1); break
-        case 3: newX = Math.max(0, x - 1); break
-      }
-
-      const isObstacle = obstacles.some(obs => obs.x === newX && obs.y === newY)
-      if (!isObstacle) {
-        agentPosRef.current = { x: newX, y: newY }
-        rewardRef.current += 0.1
-        setTotalReward(rewardRef.current)
-      } else {
-        rewardRef.current -= 1
-        setTotalReward(rewardRef.current)
-      }
-    }
-
-    const animate = () => {
-      if (!isPlaying) return
-      
-      timeRef.current += 1
-      stepDelay++
-
-      if (stepDelay >= stepInterval) {
-        moveAgent()
-        stepDelay = 0
-      }
-
-      ctx.fillStyle = 'oklch(0.98 0.015 280)'
-      ctx.fillRect(0, 0, width, height)
-
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          const cellX = gridOffsetX + x * cellSize
-          const cellY = gridOffsetY + y * cellSize
-
-          const maxQ = Math.max(...qValues[y][x])
-          const intensity = maxQ * 0.6
-
-          ctx.fillStyle = `oklch(0.72 0.18 200 / ${intensity * 0.3})`
-          ctx.fillRect(cellX, cellY, cellSize, cellSize)
-
-          ctx.strokeStyle = 'oklch(0.90 0.015 280)'
-          ctx.lineWidth = 2
-          ctx.strokeRect(cellX, cellY, cellSize, cellSize)
+        if (isGoal(nr, nc) || isPit(nr, nc)) {
+          setAgent({ ...START })
+          setEpisode((e) => e + 1)
+          setTotalReward((t) => t + rw)
+        } else {
+          setAgent({ r: nr, c: nc })
+          setTotalReward((t) => t + rw)
         }
-      }
-
-      obstacles.forEach(obs => {
-        const cellX = gridOffsetX + obs.x * cellSize
-        const cellY = gridOffsetY + obs.y * cellSize
-
-        ctx.save()
-        ctx.fillStyle = 'oklch(0.577 0.245 27.325 / 0.3)'
-        ctx.fillRect(cellX + 5, cellY + 5, cellSize - 10, cellSize - 10)
-        ctx.strokeStyle = 'oklch(0.577 0.245 27.325)'
-        ctx.lineWidth = 2
-        ctx.strokeRect(cellX + 5, cellY + 5, cellSize - 10, cellSize - 10)
-        ctx.restore()
+        return q
       })
+    }, 120)
+    return () => clearInterval(id)
+  }, [running, agent, epsilon])
 
-      const targetX = gridOffsetX + targetPosRef.current.x * cellSize + cellSize / 2
-      const targetY = gridOffsetY + targetPosRef.current.y * cellSize + cellSize / 2
-      const targetPulse = Math.sin(timeRef.current * 0.1) * 0.3 + 0.7
-
-      ctx.save()
-      ctx.shadowColor = 'oklch(0.78 0.20 130)'
-      ctx.shadowBlur = 20 * targetPulse
-      ctx.fillStyle = `oklch(0.78 0.20 130 / ${targetPulse})`
-      ctx.beginPath()
-      ctx.arc(targetX, targetY, cellSize * 0.3, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.restore()
-
-      ctx.fillStyle = 'oklch(0.22 0 0)'
-      ctx.font = 'bold 16px "Space Grotesk"'
-      ctx.textAlign = 'center'
-      ctx.fillText('🎯', targetX, targetY + 6)
-
-      const agentX = gridOffsetX + agentPosRef.current.x * cellSize + cellSize / 2
-      const agentY = gridOffsetY + agentPosRef.current.y * cellSize + cellSize / 2
-      const agentPulse = Math.sin(timeRef.current * 0.15) * 0.3 + 1
-
-      ctx.save()
-      ctx.shadowColor = 'oklch(0.70 0.20 40)'
-      ctx.shadowBlur = 25 * agentPulse
-      ctx.fillStyle = 'oklch(0.70 0.20 40)'
-      ctx.beginPath()
-      ctx.arc(agentX, agentY, cellSize * 0.35 * agentPulse, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.restore()
-
-      ctx.fillStyle = 'oklch(1 0 0)'
-      ctx.font = 'bold 18px "Space Grotesk"'
-      ctx.textAlign = 'center'
-      ctx.fillText('🤖', agentX, agentY + 6)
-
-      ctx.fillStyle = 'oklch(0.22 0 0)'
-      ctx.font = 'bold 14px "Space Grotesk"'
-      ctx.textAlign = 'left'
-      ctx.fillText(`Episode: ${episode}`, 20, 30)
-      ctx.fillText(`Reward: ${rewardRef.current.toFixed(1)}`, width - 150, 30)
-
-      animationRef.current = requestAnimationFrame(animate)
-    }
-
-    animate()
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-      }
-    }
-  }, [isPlaying])
+  // find best Q per cell for color
+  const maxQ = useMemo(() => Math.max(0.01, ...Q.flat().flat().map(Math.abs)), [Q])
 
   return (
-    <div className="relative w-full aspect-[3/2] rounded-xl overflow-hidden bg-gradient-to-br from-orange/5 via-coral/5 to-lime/5 border border-orange/20">
-      <canvas
-        ref={canvasRef}
-        width={600}
-        height={400}
-        className="absolute inset-0 w-full h-full"
-      />
-      <motion.div
-        className="absolute bottom-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg bg-card/90 backdrop-blur border-2 border-orange/30 shadow-lg"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <div className="text-sm font-semibold text-center">
-          Q-Learning Agent navigating to target
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2 items-center">
+        <Button size="sm" onClick={() => setRunning(!running)}>
+          {running ? <Pause size={14} className="mr-1" /> : <Play size={14} className="mr-1" />} {running ? 'Pause' : 'Learn'}
+        </Button>
+        <Button size="sm" variant="outline" onClick={reset}>
+          <ArrowCounterClockwise size={14} className="mr-1" /> Reset
+        </Button>
+        <div className="ml-2 text-xs">ε=<span className="font-mono">{epsilon.toFixed(2)}</span></div>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={epsilon}
+          onChange={(e) => setEpsilon(parseFloat(e.target.value))}
+          className="w-32"
+        />
+        <div className="ml-auto text-xs font-mono">episode {episode} · reward {totalReward.toFixed(1)}</div>
+      </div>
+
+      <div className="rounded-2xl border bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 p-4">
+        <div className="grid gap-1 justify-center" style={{ gridTemplateColumns: `repeat(${COLS}, 4.5rem)` }}>
+          {Array.from({ length: ROWS }).flatMap((_, r) =>
+            Array.from({ length: COLS }).map((_, c) => {
+              const goal = isGoal(r, c)
+              const pit = isPit(r, c)
+              const start = r === START.r && c === START.c
+              const here = agent.r === r && agent.c === c
+              const qs = Q[r][c]
+              const bestVal = Math.max(...qs)
+              const bestA = qs.indexOf(bestVal)
+              return (
+                <div
+                  key={`${r}-${c}`}
+                  className="w-18 h-18 rounded-lg border flex items-center justify-center relative text-[10px] font-mono"
+                  style={{
+                    width: '4.5rem',
+                    height: '4.5rem',
+                    backgroundColor: goal
+                      ? '#22c55e'
+                      : pit
+                      ? '#ef4444'
+                      : `rgba(168, 85, 247, ${0.08 + Math.abs(bestVal) / maxQ * 0.35})`,
+                    outline: here ? '3px solid #fbbf24' : start ? '2px dashed #3b82f6' : 'none',
+                  }}
+                >
+                  {/* arrows for 4 actions */}
+                  {!goal && !pit && (
+                    <>
+                      <span className="absolute top-0.5 left-1/2 -translate-x-1/2" style={{ opacity: 0.3 + (qs[0] / (maxQ || 1)) * 0.7, color: bestA === 0 && qs[0] > 0 ? '#16a34a' : 'currentColor' }}>↑ {qs[0].toFixed(1)}</span>
+                      <span className="absolute right-0.5 top-1/2 -translate-y-1/2" style={{ opacity: 0.3 + (qs[1] / (maxQ || 1)) * 0.7, color: bestA === 1 && qs[1] > 0 ? '#16a34a' : 'currentColor' }}>→ {qs[1].toFixed(1)}</span>
+                      <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2" style={{ opacity: 0.3 + (qs[2] / (maxQ || 1)) * 0.7, color: bestA === 2 && qs[2] > 0 ? '#16a34a' : 'currentColor' }}>↓ {qs[2].toFixed(1)}</span>
+                      <span className="absolute left-0.5 top-1/2 -translate-y-1/2" style={{ opacity: 0.3 + (qs[3] / (maxQ || 1)) * 0.7, color: bestA === 3 && qs[3] > 0 ? '#16a34a' : 'currentColor' }}>← {qs[3].toFixed(1)}</span>
+                    </>
+                  )}
+                  <div className="text-base">
+                    {goal ? '🏆' : pit ? '💀' : here ? '🤖' : start ? 'S' : ''}
+                  </div>
+                </div>
+              )
+            })
+          )}
         </div>
-      </motion.div>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        The agent (🤖) uses <strong>Q-learning</strong>: at each step it picks the action with the highest Q-value (exploit) or a random one (explore, controlled by ε). Rewards: +10 goal, −10 pit, −0.05 per step. Watch the arrows grow toward the goal as Q-values propagate backwards.
+      </p>
     </div>
   )
 }

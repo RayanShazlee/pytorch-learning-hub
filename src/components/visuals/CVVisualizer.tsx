@@ -1,168 +1,164 @@
-import { useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { useMemo, useState } from 'react'
+import { Button } from '@/components/ui/button'
 
-interface CVVisualizerProps {
-  isPlaying?: boolean
+/**
+ * Computer Vision pipeline visual.
+ * Shows how an image flows through: RGB → grayscale → edges → classification.
+ */
+
+type Task = 'classify' | 'detect' | 'segment'
+
+const TASKS: { key: Task; label: string; emoji: string }[] = [
+  { key: 'classify', label: 'Classification', emoji: '🏷️' },
+  { key: 'detect', label: 'Detection', emoji: '📦' },
+  { key: 'segment', label: 'Segmentation', emoji: '🎨' },
+]
+
+// Create a 12x12 pseudo image with a "cat" silhouette
+const IMG_SIZE = 12
+function makeImage(): { r: number; g: number; b: number }[][] {
+  const img: { r: number; g: number; b: number }[][] = []
+  for (let i = 0; i < IMG_SIZE; i++) {
+    const row: { r: number; g: number; b: number }[] = []
+    for (let j = 0; j < IMG_SIZE; j++) {
+      // bluish sky background
+      let r = 135, g = 180, b = 230
+      // cat body oval
+      const dx = j - 6
+      const dy = i - 7
+      if (dx * dx / 9 + dy * dy / 4 <= 1) { r = 180; g = 140; b = 90 }
+      // cat head
+      if ((j - 4) ** 2 + (i - 4) ** 2 <= 3) { r = 200; g = 150; b = 100 }
+      // ears
+      if ((j === 3 && i === 2) || (j === 5 && i === 2)) { r = 150; g = 110; b = 80 }
+      // ground
+      if (i >= 10) { r = 120; g = 160; b = 90 }
+      row.push({ r, g, b })
+    }
+    img.push(row)
+  }
+  return img
 }
 
-export function CVVisualizer({ isPlaying = true }: CVVisualizerProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [detections, setDetections] = useState(0)
-  const animationRef = useRef<number>()
-  const timeRef = useRef(0)
+export function CVVisualizer() {
+  const [task, setTask] = useState<Task>('classify')
+  const img = useMemo(() => makeImage(), [])
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas || !isPlaying) return
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const width = canvas.width
-    const height = canvas.height
-
-    const objects = [
-      { x: width * 0.2, y: height * 0.3, size: 60, label: 'Cat', color: 'oklch(0.70 0.22 340)', detected: false },
-      { x: width * 0.5, y: height * 0.4, size: 70, label: 'Dog', color: 'oklch(0.60 0.20 220)', detected: false },
-      { x: width * 0.75, y: height * 0.35, size: 50, label: 'Bird', color: 'oklch(0.78 0.20 130)', detected: false },
-    ]
-
-    let scanX = 0
-    let detectionCount = 0
-
-    const animate = () => {
-      if (!isPlaying) return
-      
-      timeRef.current += 0.02
-      scanX = (scanX + 2) % width
-
-      ctx.fillStyle = 'oklch(0.98 0.015 280)'
-      ctx.fillRect(0, 0, width, height)
-
-      objects.forEach((obj, idx) => {
-        const pulse = Math.sin(timeRef.current * 2 + idx) * 0.2 + 0.8
-        
-        ctx.save()
-        ctx.shadowColor = obj.color
-        ctx.shadowBlur = obj.detected ? 25 : 10
-        ctx.fillStyle = `${obj.color} / ${obj.detected ? 0.4 : 0.2})`
-        ctx.fillRect(obj.x - obj.size / 2, obj.y - obj.size / 2, obj.size, obj.size)
-        
-        ctx.strokeStyle = obj.color
-        ctx.lineWidth = obj.detected ? 3 : 2
-        ctx.strokeRect(obj.x - obj.size / 2, obj.y - obj.size / 2, obj.size, obj.size)
-        ctx.restore()
-
-        if (Math.abs(scanX - obj.x) < 20 && !obj.detected) {
-          obj.detected = true
-          detectionCount++
-          setDetections(detectionCount)
-        }
-
-        if (obj.detected) {
-          ctx.save()
-          ctx.fillStyle = obj.color
-          ctx.font = 'bold 14px "Space Grotesk"'
-          ctx.textAlign = 'center'
-          ctx.fillText(obj.label, obj.x, obj.y - obj.size / 2 - 12)
-          
-          ctx.font = '10px "JetBrains Mono"'
-          ctx.fillText(`${(85 + Math.random() * 15).toFixed(1)}%`, obj.x, obj.y - obj.size / 2 - 25)
-          ctx.restore()
-        }
-      })
-
-      const gradient = ctx.createLinearGradient(scanX - 30, 0, scanX + 30, 0)
-      gradient.addColorStop(0, 'oklch(0.62 0.24 300 / 0)')
-      gradient.addColorStop(0.5, 'oklch(0.62 0.24 300 / 0.3)')
-      gradient.addColorStop(1, 'oklch(0.62 0.24 300 / 0)')
-      
-      ctx.fillStyle = gradient
-      ctx.fillRect(scanX - 30, 0, 60, height)
-
-      ctx.strokeStyle = 'oklch(0.62 0.24 300 / 0.6)'
-      ctx.lineWidth = 2
-      ctx.setLineDash([5, 5])
-      ctx.beginPath()
-      ctx.moveTo(scanX, 0)
-      ctx.lineTo(scanX, height)
-      ctx.stroke()
-      ctx.setLineDash([])
-
-      ctx.fillStyle = 'oklch(0.22 0 0 / 0.1)'
-      ctx.fillRect(0, 0, width, 40)
-      
-      ctx.fillStyle = 'oklch(0.22 0 0)'
-      ctx.font = 'bold 16px "Space Grotesk"'
-      ctx.textAlign = 'left'
-      ctx.fillText('Object Detection', 20, 25)
-
-      const convLayers = [
-        { x: width * 0.15, y: height * 0.75, label: 'Conv1', size: 40 },
-        { x: width * 0.35, y: height * 0.75, label: 'Conv2', size: 32 },
-        { x: width * 0.55, y: height * 0.75, label: 'Conv3', size: 24 },
-        { x: width * 0.75, y: height * 0.75, label: 'FC', size: 20 },
-      ]
-
-      convLayers.forEach((layer, idx) => {
-        const activation = Math.sin(timeRef.current * 3 + idx * 0.5) * 0.3 + 0.7
-        
-        ctx.save()
-        ctx.shadowColor = 'oklch(0.72 0.18 200)'
-        ctx.shadowBlur = 15 * activation
-        ctx.fillStyle = `oklch(0.72 0.18 200 / ${activation * 0.5})`
-        ctx.fillRect(layer.x - layer.size / 2, layer.y - layer.size / 2, layer.size, layer.size)
-        
-        ctx.strokeStyle = 'oklch(0.72 0.18 200)'
-        ctx.lineWidth = 2
-        ctx.strokeRect(layer.x - layer.size / 2, layer.y - layer.size / 2, layer.size, layer.size)
-        ctx.restore()
-
-        ctx.fillStyle = 'oklch(0.22 0 0)'
-        ctx.font = '11px "JetBrains Mono"'
-        ctx.textAlign = 'center'
-        ctx.fillText(layer.label, layer.x, layer.y + layer.size / 2 + 15)
-
-        if (idx < convLayers.length - 1) {
-          const nextLayer = convLayers[idx + 1]
-          ctx.strokeStyle = 'oklch(0.72 0.18 200 / 0.4)'
-          ctx.lineWidth = 2
-          ctx.beginPath()
-          ctx.moveTo(layer.x + layer.size / 2, layer.y)
-          ctx.lineTo(nextLayer.x - nextLayer.size / 2, nextLayer.y)
-          ctx.stroke()
-        }
-      })
-
-      animationRef.current = requestAnimationFrame(animate)
-    }
-
-    animate()
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
+  // pre-compute derived views
+  const gray = useMemo(() => img.map((r) => r.map((p) => 0.3 * p.r + 0.59 * p.g + 0.11 * p.b)), [img])
+  const edges = useMemo(() => {
+    const out: number[][] = []
+    for (let i = 0; i < IMG_SIZE; i++) {
+      const row: number[] = []
+      for (let j = 0; j < IMG_SIZE; j++) {
+        const l = gray[i][j - 1] ?? gray[i][j]
+        const r = gray[i][j + 1] ?? gray[i][j]
+        const t = gray[i - 1]?.[j] ?? gray[i][j]
+        const b = gray[i + 1]?.[j] ?? gray[i][j]
+        const gx = r - l
+        const gy = b - t
+        row.push(Math.min(255, Math.sqrt(gx * gx + gy * gy) * 1.4))
       }
+      out.push(row)
     }
-  }, [isPlaying])
+    return out
+  }, [gray])
 
   return (
-    <div className="relative w-full aspect-[12/7] rounded-xl overflow-hidden bg-gradient-to-br from-lime/5 via-cyan/5 to-violet/5 border border-lime/20">
-      <canvas
-        ref={canvasRef}
-        width={600}
-        height={350}
-        className="absolute inset-0 w-full h-full"
-      />
-      <motion.div
-        className="absolute top-4 right-4 px-4 py-2 rounded-lg bg-card/90 backdrop-blur border-2 border-lime/30 shadow-lg"
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-      >
-        <div className="text-xs font-mono text-muted-foreground">
-          Detected: <span className="text-lime font-bold">{detections}/3</span>
+    <div className="space-y-4">
+      <div className="flex flex-wrap justify-center gap-2">
+        {TASKS.map((t) => (
+          <Button key={t.key} size="sm" variant={task === t.key ? 'default' : 'outline'} onClick={() => setTask(t.key)}>
+            {t.emoji} {t.label}
+          </Button>
+        ))}
+      </div>
+
+      <div className="rounded-2xl border bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 p-4 space-y-3">
+        <div className="flex flex-wrap gap-3 justify-center items-start">
+          {/* Original */}
+          <div className="text-center">
+            <div className="text-xs font-bold text-muted-foreground mb-1">Input (RGB)</div>
+            <div className="relative">
+              <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${IMG_SIZE}, 1rem)` }}>
+                {img.flatMap((row, i) => row.map((p, j) => <div key={`${i}-${j}`} className="w-4 h-4" style={{ backgroundColor: `rgb(${p.r},${p.g},${p.b})` }} />))}
+              </div>
+              {/* task overlays */}
+              {task === 'detect' && (
+                <div className="absolute border-2 border-red-500 rounded pointer-events-none" style={{ left: '1rem', top: '0.5rem', width: '6rem', height: '7rem' }}>
+                  <div className="absolute -top-4 left-0 bg-red-500 text-white text-[10px] px-1 rounded-sm">cat 0.97</div>
+                </div>
+              )}
+              {task === 'segment' && (
+                <div className="absolute inset-0 pointer-events-none grid gap-0" style={{ gridTemplateColumns: `repeat(${IMG_SIZE}, 1rem)` }}>
+                  {img.flatMap((row, i) => row.map((p, j) => {
+                    const isCat = p.r > 150 && p.g > 100 && p.g < 160 && p.b < 120
+                    return <div key={`s${i}-${j}`} className="w-4 h-4" style={{ backgroundColor: isCat ? 'rgba(239,68,68,0.55)' : 'transparent' }} />
+                  }))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="text-xl self-center">→</div>
+
+          {/* Grayscale */}
+          <div className="text-center">
+            <div className="text-xs font-bold text-muted-foreground mb-1">Grayscale</div>
+            <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${IMG_SIZE}, 1rem)` }}>
+              {gray.flatMap((row, i) => row.map((v, j) => <div key={`${i}-${j}`} className="w-4 h-4" style={{ backgroundColor: `rgb(${v},${v},${v})` }} />))}
+            </div>
+          </div>
+
+          <div className="text-xl self-center">→</div>
+
+          {/* Edges */}
+          <div className="text-center">
+            <div className="text-xs font-bold text-muted-foreground mb-1">Edges (Sobel)</div>
+            <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${IMG_SIZE}, 1rem)` }}>
+              {edges.flatMap((row, i) => row.map((v, j) => {
+                const c = Math.round(Math.min(255, v * 1.5))
+                return <div key={`${i}-${j}`} className="w-4 h-4" style={{ backgroundColor: `rgb(${c},${c},${c})` }} />
+              }))}
+            </div>
+          </div>
+
+          <div className="text-xl self-center">→</div>
+
+          {/* Output per task */}
+          <div className="text-center">
+            <div className="text-xs font-bold text-muted-foreground mb-1">Output</div>
+            {task === 'classify' && (
+              <div className="space-y-1 text-left">
+                {[['cat', 0.94], ['dog', 0.04], ['bird', 0.01], ['car', 0.01]].map(([name, p]) => (
+                  <div key={name as string} className="flex items-center gap-1 text-xs">
+                    <span className="w-10">{name}</span>
+                    <div className="h-2 rounded bg-muted flex-1 min-w-[80px]"><div className="h-full rounded bg-emerald-500" style={{ width: `${(p as number) * 100}%` }} /></div>
+                    <span className="font-mono text-[10px] w-10">{((p as number) * 100).toFixed(0)}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {task === 'detect' && (
+              <div className="text-xs space-y-1">
+                <div className="rounded bg-red-500 text-white px-2 py-1 inline-block">cat (0.97)</div>
+                <div className="text-muted-foreground">box: (1,0) → (7,7)</div>
+                <div className="text-muted-foreground">area: 49 px</div>
+              </div>
+            )}
+            {task === 'segment' && (
+              <div className="text-xs space-y-1">
+                <div className="rounded bg-red-500/60 text-white px-2 py-1 inline-block">cat pixels</div>
+                <div className="text-muted-foreground">per-pixel mask</div>
+              </div>
+            )}
+          </div>
         </div>
-      </motion.div>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Classical computer vision pipeline: raw pixels → features (edges, textures) → task-specific head. Modern CNNs learn all of this end-to-end from data.
+      </p>
     </div>
   )
 }

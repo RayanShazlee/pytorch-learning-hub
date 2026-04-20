@@ -7,12 +7,14 @@ import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { Brain, Sparkle, GraduationCap, Baby } from '@phosphor-icons/react'
+import { Brain, Sparkle, GraduationCap, Baby, Rocket } from '@phosphor-icons/react'
 import { LessonCard } from '@/components/LessonCard'
 import { LessonDetail } from '@/components/LessonDetail'
 import { DocCard } from '@/components/DocCard'
 import { DocDetail } from '@/components/DocDetail'
 import { Confetti } from '@/components/Confetti'
+import { ApplicationsExplorer } from '@/components/ApplicationsExplorer'
+import { PyTorchChatbot } from '@/components/PyTorchChatbot'
 import { lessons, categories } from '@/lib/lessons'
 import type { Lesson, LessonStatus } from '@/lib/lessons'
 import { docTopics, docCategories } from '@/lib/docs'
@@ -28,7 +30,18 @@ function App() {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [selectedDoc, setSelectedDoc] = useState<DocTopic | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [showApplications, setShowApplications] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
+
+  // Chatbot + Applications need to navigate into a doc topic from anywhere on
+  // the site. This handler flips us into docs mode (so the doc list is
+  // consistent) and opens the topic directly.
+  const openTopic = (topic: DocTopic) => {
+    setMode('docs')
+    setSelectedLesson(null)
+    setShowApplications(false)
+    setSelectedDoc(topic)
+  }
   const previousProgressRef = useRef<number>(0)
 
   const getLessonStatus = (lessonId: string): LessonStatus => {
@@ -87,6 +100,25 @@ function App() {
     previousProgressRef.current = currentProgress
   }, [currentProgress, mode])
 
+  // Chatbot + Applications explorer must be available on every screen, so we
+  // render them alongside the conditional detail views too.
+  const globalOverlays = (
+    <>
+      <AnimatePresence>
+        {showApplications && (
+          <ApplicationsExplorer
+            onClose={() => setShowApplications(false)}
+            onOpenTopic={openTopic}
+          />
+        )}
+      </AnimatePresence>
+      <PyTorchChatbot
+        onOpenTopic={openTopic}
+        onOpenApplications={() => setShowApplications(true)}
+      />
+    </>
+  )
+
   if (selectedLesson) {
     return (
       <>
@@ -101,6 +133,7 @@ function App() {
           }}
           isCompleted={completedLessons?.includes(selectedLesson.id) || false}
         />
+        {globalOverlays}
       </>
     )
   }
@@ -119,6 +152,7 @@ function App() {
           }}
           isCompleted={completedDocs?.includes(selectedDoc.id) || false}
         />
+        {globalOverlays}
       </>
     )
   }
@@ -230,6 +264,16 @@ function App() {
               >
                 <GraduationCap size={20} weight="duotone" />
                 Full Docs
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => setShowApplications(true)}
+                className="gap-2 transition-all border-lime/40 bg-gradient-to-r from-lime/10 to-cyan/10 hover:from-lime/20 hover:to-cyan/20"
+                title="See what real products are built with PyTorch and why it matters"
+              >
+                <Rocket size={20} weight="duotone" className="text-lime" />
+                What can I build?
               </Button>
             </div>
           </motion.div>
@@ -345,6 +389,7 @@ function App() {
           )}
         </div>
       </div>
+      {globalOverlays}
     </>
   )
 }

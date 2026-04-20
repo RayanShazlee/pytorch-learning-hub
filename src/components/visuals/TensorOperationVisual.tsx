@@ -1,203 +1,179 @@
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, X, ArrowsLeftRight, Link } from '@phosphor-icons/react'
 
-type OperationType = 'add' | 'multiply' | 'reshape' | 'concatenate'
+/**
+ * Interactive matrix / tensor operation playground:
+ *  - Element-wise add
+ *  - Element-wise multiply
+ *  - Matrix multiply (with animated row·col dot product)
+ *  - Broadcasting (vector + matrix)
+ */
 
-export function TensorOperationVisual() {
-  const [currentOperation, setCurrentOperation] = useState<OperationType>('add')
-  const [isAnimating, setIsAnimating] = useState(false)
+type Op = 'add' | 'mul' | 'matmul' | 'broadcast'
 
-  const runAnimation = (operation: OperationType) => {
-    setCurrentOperation(operation)
-    setIsAnimating(true)
-    setTimeout(() => setIsAnimating(false), 2000)
+const OPS: { key: Op; label: string; emoji: string; formula: string }[] = [
+  { key: 'add', label: 'Add', emoji: '➕', formula: 'C[i,j] = A[i,j] + B[i,j]' },
+  { key: 'mul', label: 'Multiply', emoji: '✖️', formula: 'C[i,j] = A[i,j] · B[i,j]' },
+  { key: 'matmul', label: 'Matmul', emoji: '🔗', formula: 'C[i,j] = Σ A[i,k] · B[k,j]' },
+  { key: 'broadcast', label: 'Broadcast', emoji: '📡', formula: 'C[i,j] = A[i,j] + v[j]' },
+]
+
+const A: number[][] = [
+  [1, 2, 3],
+  [4, 5, 6],
+]
+const B: number[][] = [
+  [2, 0, 1],
+  [1, 3, 2],
+]
+const Bmm: number[][] = [
+  [1, 2],
+  [0, 1],
+  [3, 1],
+]
+const vec = [10, 20, 30]
+
+function cellColor(v: number, max: number) {
+  const t = Math.min(1, Math.abs(v) / max)
+  if (v >= 0) {
+    const r = Math.round(251 - t * 40)
+    const g = Math.round(146 - t * 60)
+    const b = Math.round(60 - t * 30)
+    return `rgb(${r},${g},${b})`
   }
+  return `rgb(37,99,235)`
+}
 
+function Matrix({ M, highlight }: { M: number[][]; highlight?: (r: number, c: number) => boolean }) {
+  const max = Math.max(...M.flat().map((v) => Math.abs(v)), 1)
   return (
-    <div className="space-y-6">
-      <div className="flex gap-2 flex-wrap justify-center">
-        <Button
-          onClick={() => runAnimation('add')}
-          variant={currentOperation === 'add' ? 'default' : 'outline'}
-          className="gap-2"
-        >
-          <Plus weight="bold" />
-          Addition
-        </Button>
-        <Button
-          onClick={() => runAnimation('multiply')}
-          variant={currentOperation === 'multiply' ? 'default' : 'outline'}
-          className="gap-2"
-        >
-          <X weight="bold" />
-          Multiply
-        </Button>
-        <Button
-          onClick={() => runAnimation('reshape')}
-          variant={currentOperation === 'reshape' ? 'default' : 'outline'}
-          className="gap-2"
-        >
-          <ArrowsLeftRight weight="bold" />
-          Reshape
-        </Button>
-        <Button
-          onClick={() => runAnimation('concatenate')}
-          variant={currentOperation === 'concatenate' ? 'default' : 'outline'}
-          className="gap-2"
-        >
-          <Link weight="bold" />
-          Concatenate
-        </Button>
-      </div>
-
-      <div className="relative w-full h-96 bg-gradient-to-br from-pink/5 via-coral/5 to-orange/5 rounded-2xl border-2 border-pink/20 overflow-hidden flex items-center justify-center p-8">
-        {currentOperation === 'add' && (
-          <div className="flex items-center gap-8">
-            <TensorBox values={[1, 2, 3]} color="from-pink to-coral" isAnimating={isAnimating} />
-            <motion.div
-              className="text-4xl font-bold text-pink"
-              animate={{ scale: isAnimating ? [1, 1.3, 1] : 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              +
-            </motion.div>
-            <TensorBox values={[4, 5, 6]} color="from-cyan to-secondary" isAnimating={isAnimating} />
-            <motion.div className="text-4xl font-bold text-violet">=</motion.div>
-            <TensorBox
-              values={[5, 7, 9]}
-              color="from-lime to-accent"
-              isAnimating={isAnimating}
-              delay={1}
-            />
-          </div>
-        )}
-
-        {currentOperation === 'multiply' && (
-          <div className="flex items-center gap-8">
-            <TensorBox values={[1, 2, 3]} color="from-pink to-coral" isAnimating={isAnimating} />
-            <motion.div
-              className="text-4xl font-bold text-pink"
-              animate={{ scale: isAnimating ? [1, 1.3, 1] : 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              ×
-            </motion.div>
-            <div className="text-5xl font-bold text-cyan">2</div>
-            <motion.div className="text-4xl font-bold text-violet">=</motion.div>
-            <TensorBox
-              values={[2, 4, 6]}
-              color="from-lime to-accent"
-              isAnimating={isAnimating}
-              delay={1}
-            />
-          </div>
-        )}
-
-        {currentOperation === 'reshape' && (
-          <div className="flex items-center gap-8">
-            <TensorBox values={[1, 2, 3, 4, 5, 6]} color="from-pink to-coral" isAnimating={isAnimating} layout="1d" />
-            <motion.div
-              className="text-4xl font-bold text-pink"
-              animate={{ rotate: isAnimating ? [0, 360] : 0 }}
-              transition={{ duration: 1 }}
-            >
-              🔄
-            </motion.div>
-            <TensorBox2D
-              values={[[1, 2, 3], [4, 5, 6]]}
-              color="from-lime to-accent"
-              isAnimating={isAnimating}
-              delay={1}
-            />
-          </div>
-        )}
-
-        {currentOperation === 'concatenate' && (
-          <div className="flex items-center gap-8">
-            <TensorBox values={[1, 2]} color="from-pink to-coral" isAnimating={isAnimating} />
-            <motion.div
-              className="text-4xl font-bold text-pink"
-              animate={{ x: isAnimating ? [0, 10, 0] : 0 }}
-              transition={{ duration: 0.5, repeat: isAnimating ? 3 : 0 }}
-            >
-              🔗
-            </motion.div>
-            <TensorBox values={[3, 4]} color="from-cyan to-secondary" isAnimating={isAnimating} />
-            <motion.div className="text-4xl font-bold text-violet">=</motion.div>
-            <TensorBox
-              values={[1, 2, 3, 4]}
-              color="from-lime to-accent"
-              isAnimating={isAnimating}
-              delay={1}
-            />
-          </div>
-        )}
-      </div>
+    <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${M[0].length}, 2.5rem)` }}>
+      {M.map((row, r) =>
+        row.map((v, c) => (
+          <motion.div
+            key={`${r}-${c}`}
+            animate={{ scale: highlight?.(r, c) ? 1.15 : 1 }}
+            className="w-10 h-10 rounded-lg text-white text-sm font-mono font-bold flex items-center justify-center shadow"
+            style={{
+              backgroundColor: cellColor(v, max),
+              outline: highlight?.(r, c) ? '3px solid #fbbf24' : 'none',
+            }}
+          >
+            {v}
+          </motion.div>
+        ))
+      )}
     </div>
   )
 }
 
-function TensorBox({ values, color, isAnimating, delay = 0, layout = '1d' }: { values: number[], color: string, isAnimating: boolean, delay?: number, layout?: '1d' | '2d' }) {
-  return (
-    <motion.div
-      className={`flex gap-2 ${layout === '1d' ? 'flex-row' : 'flex-col'}`}
-      initial={{ scale: 0, opacity: 0 }}
-      animate={{
-        scale: isAnimating ? [1, 1.1, 1] : 1,
-        opacity: 1
-      }}
-      transition={{ delay, duration: 0.5 }}
-    >
-      {values.map((val, i) => (
-        <motion.div
-          key={i}
-          className={`w-16 h-16 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-xl shadow-lg`}
-          initial={{ y: -20, opacity: 0 }}
-          animate={{
-            y: 0,
-            opacity: 1,
-            scale: isAnimating ? [1, 1.05, 1] : 1
-          }}
-          transition={{ delay: delay + i * 0.1, duration: 0.3 }}
-        >
-          {val}
-        </motion.div>
-      ))}
-    </motion.div>
-  )
-}
+export function TensorOperationVisual() {
+  const [op, setOp] = useState<Op>('matmul')
+  const [step, setStep] = useState(0) // only used for matmul
 
-function TensorBox2D({ values, color, isAnimating, delay = 0 }: { values: number[][], color: string, isAnimating: boolean, delay?: number }) {
+  const current = OPS.find((o) => o.key === op)!
+
+  const result = useMemo(() => {
+    if (op === 'add') return A.map((row, i) => row.map((v, j) => v + B[i][j]))
+    if (op === 'mul') return A.map((row, i) => row.map((v, j) => v * B[i][j]))
+    if (op === 'broadcast') return A.map((row) => row.map((v, j) => v + vec[j]))
+    // matmul: A(2x3) · Bmm(3x2) = C(2x2)
+    const C: number[][] = [
+      [0, 0],
+      [0, 0],
+    ]
+    for (let i = 0; i < 2; i++) {
+      for (let j = 0; j < 2; j++) {
+        let s = 0
+        for (let k = 0; k < 3; k++) s += A[i][k] * Bmm[k][j]
+        C[i][j] = s
+      }
+    }
+    return C
+  }, [op])
+
+  const totalCells = op === 'matmul' ? 4 : 6
+  const curIdx = Math.min(step, totalCells - 1)
+  const curR = op === 'matmul' ? Math.floor(curIdx / 2) : Math.floor(curIdx / 3)
+  const curC = op === 'matmul' ? curIdx % 2 : curIdx % 3
+
   return (
-    <motion.div
-      className="flex flex-col gap-2"
-      initial={{ scale: 0, opacity: 0 }}
-      animate={{
-        scale: isAnimating ? [0, 1.1, 1] : 1,
-        opacity: 1
-      }}
-      transition={{ delay, duration: 0.5 }}
-    >
-      {values.map((row, rowIdx) => (
-        <div key={rowIdx} className="flex gap-2">
-          {row.map((val, colIdx) => (
-            <motion.div
-              key={`${rowIdx}-${colIdx}`}
-              className={`w-16 h-16 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-xl shadow-lg`}
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{
-                scale: 1,
-                opacity: 1
-              }}
-              transition={{ delay: delay + (rowIdx * 3 + colIdx) * 0.1, duration: 0.3 }}
-            >
-              {val}
-            </motion.div>
-          ))}
+    <div className="space-y-4">
+      <div className="flex flex-wrap justify-center gap-2">
+        {OPS.map((o) => (
+          <Button key={o.key} size="sm" variant={op === o.key ? 'default' : 'outline'} onClick={() => { setOp(o.key); setStep(0) }}>
+            {o.emoji} {o.label}
+          </Button>
+        ))}
+      </div>
+
+      <div className="text-center text-sm">
+        <code className="bg-muted px-2 py-1 rounded">{current.formula}</code>
+      </div>
+
+      <div className="rounded-2xl border bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 p-4">
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          {/* A */}
+          <div className="text-center">
+            <div className="text-xs font-bold text-muted-foreground mb-1">A {op === 'matmul' ? '(2×3)' : '(2×3)'}</div>
+            <Matrix M={A} highlight={(r) => op === 'matmul' && r === curR} />
+          </div>
+          <div className="text-2xl">{op === 'matmul' ? '·' : op === 'mul' ? '×' : '+'}</div>
+
+          {/* B or vec */}
+          {op === 'broadcast' ? (
+            <div className="text-center">
+              <div className="text-xs font-bold text-muted-foreground mb-1">v (3,)</div>
+              <div className="flex gap-1 justify-center">
+                {vec.map((v, j) => (
+                  <div key={j} className="w-10 h-10 rounded-lg text-white text-sm font-mono font-bold flex items-center justify-center shadow" style={{ backgroundColor: cellColor(v, 30) }}>
+                    {v}
+                  </div>
+                ))}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-1">broadcast ↓ each row</div>
+            </div>
+          ) : (
+            <div className="text-center">
+              <div className="text-xs font-bold text-muted-foreground mb-1">B {op === 'matmul' ? '(3×2)' : '(2×3)'}</div>
+              <Matrix M={op === 'matmul' ? Bmm : B} highlight={(_, c) => op === 'matmul' && c === curC} />
+            </div>
+          )}
+
+          <div className="text-2xl">=</div>
+
+          {/* Result */}
+          <div className="text-center">
+            <div className="text-xs font-bold text-muted-foreground mb-1">
+              C {op === 'matmul' ? '(2×2)' : '(2×3)'}
+            </div>
+            <Matrix M={result} highlight={(r, c) => r === curR && c === curC && op === 'matmul'} />
+          </div>
         </div>
-      ))}
-    </motion.div>
+
+        {op === 'matmul' && (
+          <div className="mt-4 text-center">
+            <Button size="sm" variant="outline" onClick={() => setStep((s) => (s + 1) % 4)}>
+              Next cell → C[{curR},{curC}]
+            </Button>
+            <div className="mt-2 font-mono text-sm">
+              C[{curR},{curC}] ={' '}
+              {[0, 1, 2].map((k) => (
+                <span key={k}>
+                  {k > 0 && ' + '}
+                  <span className="text-orange-500">{A[curR][k]}</span>·<span className="text-blue-500">{Bmm[k][curC]}</span>
+                </span>
+              ))}{' '}
+              = <span className="font-bold">{result[curR][curC]}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Matmul is the heart of neural networks: every dense layer is <code>output = input @ W + b</code>. Broadcasting lets a small tensor act on a larger one without copying memory.
+      </p>
+    </div>
   )
 }

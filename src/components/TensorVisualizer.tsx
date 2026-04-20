@@ -1,199 +1,244 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, Minus } from '@phosphor-icons/react'
 
 interface TensorVisualizerProps {
   title: string
   description: string
 }
 
-export function TensorVisualizer({ title, description }: TensorVisualizerProps) {
-  const [dimensions, setDimensions] = useState<number[]>([4])
-  const [values, setValues] = useState<number[]>([1, 2, 3, 4])
+type Mode = 'scalar' | 'vector' | 'matrix' | 'cube' | 'image' | 'batch'
 
-  const addDimension = () => {
-    if (dimensions.length < 3) {
-      setDimensions([...dimensions, 2])
-      const newSize = dimensions.reduce((acc, dim) => acc * dim, 1) * 2
-      setValues(Array.from({ length: newSize }, (_, i) => (i % 10) + 1))
-    }
-  }
+const MODES: { key: Mode; label: string; emoji: string; dim: string; shape: string; desc: string }[] = [
+  { key: 'scalar', label: '0D — Scalar', emoji: '🔴', dim: '0D', shape: '()', desc: 'A single number. Like a temperature or a loss value.' },
+  { key: 'vector', label: '1D — Vector', emoji: '📏', dim: '1D', shape: '(5,)', desc: 'A list of numbers. Audio, a word embedding, a feature vector.' },
+  { key: 'matrix', label: '2D — Matrix', emoji: '🧮', dim: '2D', shape: '(4, 5)', desc: 'Rows × columns. Spreadsheets, grayscale images, weight matrices.' },
+  { key: 'cube', label: '3D — Cube', emoji: '🎲', dim: '3D', shape: '(3, 4, 5)', desc: 'Stacks of matrices. RGB images [C, H, W] or sequences [T, B, F].' },
+  { key: 'image', label: 'Image tensor', emoji: '🖼️', dim: '3D', shape: '(3, 8, 8)', desc: 'A real image: 3 channels (R,G,B), each an H×W matrix of pixels.' },
+  { key: 'batch', label: '4D — Batch', emoji: '📦', dim: '4D', shape: '(N, C, H, W)', desc: 'A batch of images fed to the GPU in parallel.' },
+]
 
-  const removeDimension = () => {
-    if (dimensions.length > 1) {
-      const newDims = dimensions.slice(0, -1)
-      setDimensions(newDims)
-      const newSize = newDims.reduce((acc, dim) => acc * dim, 1)
-      setValues(Array.from({ length: newSize }, (_, i) => (i % 10) + 1))
-    }
-  }
+function cellColor(v: number, max = 9) {
+  const t = v / max
+  const r = Math.round(99 + t * 150)
+  const g = Math.round(102 + t * 40)
+  const b = Math.round(241 - t * 80)
+  return `rgb(${r},${g},${b})`
+}
 
-  const getColorForIndex = (index: number) => {
-    const colors = [
-      { bg: 'bg-pink', text: 'text-pink-foreground', gradient: 'from-pink to-coral' },
-      { bg: 'bg-violet', text: 'text-violet-foreground', gradient: 'from-violet to-primary' },
-      { bg: 'bg-cyan', text: 'text-cyan-foreground', gradient: 'from-cyan to-secondary' },
-      { bg: 'bg-lime', text: 'text-lime-foreground', gradient: 'from-lime to-accent' },
-      { bg: 'bg-orange', text: 'text-orange-foreground', gradient: 'from-orange to-coral' },
-      { bg: 'bg-primary', text: 'text-primary-foreground', gradient: 'from-primary to-violet' },
-    ]
-    return colors[index % colors.length]
-  }
+function ScalarView() {
+  return (
+    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex justify-center py-8">
+      <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-pink-500 to-red-500 text-white text-3xl font-mono font-bold flex items-center justify-center shadow-xl">
+        7
+      </div>
+    </motion.div>
+  )
+}
 
-  const render1D = () => (
-    <div className="flex gap-2 flex-wrap justify-center">
-      {values.map((val, i) => {
-        const color = getColorForIndex(i)
-        return (
-          <motion.div
-            key={i}
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ delay: i * 0.05, type: 'spring' }}
-            className={`w-14 h-14 rounded-lg flex items-center justify-center font-bold text-lg bg-gradient-to-br ${color.gradient} text-white shadow-lg`}
-            style={{
-              boxShadow: `0 4px 12px rgba(0,0,0,0.15), 0 0 8px oklch(0.70 0.28 ${340 + i * 50} / 0.3)`
-            }}
-          >
-            {val}
-          </motion.div>
-        )
-      })}
+function VectorView() {
+  const vals = [2, 7, 1, 8, 4]
+  return (
+    <div className="flex justify-center gap-2 py-6">
+      {vals.map((v, i) => (
+        <motion.div
+          key={i}
+          initial={{ y: 10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: i * 0.05 }}
+          className="w-14 h-14 rounded-xl text-white text-xl font-mono font-bold flex items-center justify-center shadow"
+          style={{ backgroundColor: cellColor(v) }}
+        >
+          {v}
+        </motion.div>
+      ))}
     </div>
   )
+}
 
-  const render2D = () => {
-    const rows = dimensions[0]
-    const cols = dimensions[1]
-    return (
-      <div className="flex flex-col gap-2">
-        {Array.from({ length: rows }, (_, rowIdx) => (
-          <div key={rowIdx} className="flex gap-2 justify-center">
-            {Array.from({ length: cols }, (_, colIdx) => {
-              const idx = rowIdx * cols + colIdx
-              const color = getColorForIndex(idx)
+function MatrixView() {
+  const rows = 4
+  const cols = 5
+  return (
+    <div className="flex justify-center py-4">
+      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, 2.75rem)` }}>
+        {Array.from({ length: rows * cols }).map((_, i) => {
+          const v = (i * 3 + 1) % 10
+          return (
+            <motion.div
+              key={i}
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: i * 0.02 }}
+              className="w-11 h-11 rounded-lg text-white text-base font-mono font-bold flex items-center justify-center shadow"
+              style={{ backgroundColor: cellColor(v) }}
+            >
+              {v}
+            </motion.div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function CubeView() {
+  const depth = 3
+  const rows = 4
+  const cols = 5
+  return (
+    <div className="flex justify-center py-4">
+      <div className="relative" style={{ paddingTop: (depth - 1) * 10, paddingLeft: (depth - 1) * 10 }}>
+        {Array.from({ length: depth }).map((_, d) => (
+          <div
+            key={d}
+            className="absolute grid gap-1"
+            style={{
+              top: (depth - 1 - d) * 10,
+              left: (depth - 1 - d) * 10,
+              gridTemplateColumns: `repeat(${cols}, 2.25rem)`,
+              filter: `brightness(${1 - d * 0.1})`,
+            }}
+          >
+            {Array.from({ length: rows * cols }).map((_, i) => {
+              const v = (i + d * 2) % 10
               return (
-                <motion.div
-                  key={colIdx}
-                  initial={{ scale: 0, y: -20 }}
-                  animate={{ scale: 1, y: 0 }}
-                  transition={{ delay: idx * 0.03, type: 'spring' }}
-                  className={`w-14 h-14 rounded-lg flex items-center justify-center font-bold text-lg bg-gradient-to-br ${color.gradient} text-white shadow-lg`}
-                  style={{
-                    boxShadow: `0 4px 12px rgba(0,0,0,0.15), 0 0 8px oklch(0.70 0.28 ${340 + idx * 40} / 0.3)`
-                  }}
-                >
-                  {values[idx] || 0}
-                </motion.div>
+                <div key={i} className="w-9 h-9 rounded text-white text-xs font-mono font-bold flex items-center justify-center shadow" style={{ backgroundColor: cellColor(v) }}>
+                  {v}
+                </div>
               )
             })}
           </div>
         ))}
+        <div className="grid gap-1 opacity-0" style={{ gridTemplateColumns: `repeat(${cols}, 2.25rem)` }}>
+          {Array.from({ length: rows * cols }).map((_, i) => (
+            <div key={i} className="w-9 h-9" />
+          ))}
+        </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
 
-  const render3D = () => {
-    const depth = dimensions[0]
-    const rows = dimensions[1]
-    const cols = dimensions[2]
-    
-    return (
-      <div className="flex gap-6 flex-wrap justify-center">
-        {Array.from({ length: depth }, (_, depthIdx) => (
-          <motion.div
-            key={depthIdx}
-            initial={{ scale: 0, rotateY: 90 }}
-            animate={{ scale: 1, rotateY: 0 }}
-            transition={{ delay: depthIdx * 0.15, type: 'spring' }}
-            className="flex flex-col gap-2"
-          >
-            <div className="text-sm font-medium text-center text-muted-foreground mb-1">
-              Layer {depthIdx + 1}
-            </div>
-            {Array.from({ length: rows }, (_, rowIdx) => (
-              <div key={rowIdx} className="flex gap-2">
-                {Array.from({ length: cols }, (_, colIdx) => {
-                  const idx = depthIdx * rows * cols + rowIdx * cols + colIdx
-                  const color = getColorForIndex(idx)
-                  return (
-                    <div
-                      key={colIdx}
-                      className={`w-12 h-12 rounded-lg flex items-center justify-center font-bold text-sm bg-gradient-to-br ${color.gradient} text-white shadow-lg`}
-                      style={{
-                        boxShadow: `0 4px 12px rgba(0,0,0,0.15), 0 0 8px oklch(0.70 0.28 ${340 + idx * 30} / 0.3)`
-                      }}
-                    >
-                      {values[idx] || 0}
-                    </div>
-                  )
-                })}
-              </div>
-            ))}
-          </motion.div>
+function ImageView() {
+  // make a tiny "smiley" RGB image 8x8
+  const H = 8
+  const W = 8
+  const channels = useMemo(() => {
+    const R = Array(H * W).fill(0.95)
+    const G = Array(H * W).fill(0.85)
+    const B = Array(H * W).fill(0.4)
+    const setPx = (y: number, x: number, r: number, g: number, b: number) => {
+      R[y * W + x] = r
+      G[y * W + x] = g
+      B[y * W + x] = b
+    }
+    setPx(2, 2, 0.1, 0.1, 0.15) // eye
+    setPx(2, 5, 0.1, 0.1, 0.15) // eye
+    setPx(5, 2, 0.9, 0.3, 0.3)
+    setPx(5, 3, 0.9, 0.3, 0.3)
+    setPx(5, 4, 0.9, 0.3, 0.3)
+    setPx(5, 5, 0.9, 0.3, 0.3)
+    setPx(6, 1, 0.9, 0.3, 0.3)
+    setPx(6, 6, 0.9, 0.3, 0.3)
+    return { R, G, B }
+  }, [])
+
+  const renderChannel = (arr: number[], label: string, color: string) => (
+    <div className="flex flex-col items-center">
+      <div className="text-xs font-bold mb-1" style={{ color }}>{label}</div>
+      <div className="grid gap-0.5" style={{ gridTemplateColumns: `repeat(${W}, 1.1rem)` }}>
+        {arr.map((v, i) => (
+          <div key={i} className="w-[1.1rem] h-[1.1rem] rounded-sm" style={{ backgroundColor: `rgba(${color === 'red' ? 255 : 0},${color === 'green' ? 255 : 0},${color === 'blue' ? 255 : 0},${v})` }} />
         ))}
       </div>
-    )
-  }
-
-  const renderTensor = () => {
-    if (dimensions.length === 1) return render1D()
-    if (dimensions.length === 2) return render2D()
-    if (dimensions.length === 3) return render3D()
-    return null
-  }
+    </div>
+  )
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center justify-center gap-4 flex-wrap">
-          <div className="text-center">
-            <div className="text-sm text-muted-foreground mb-1">Dimensions</div>
-            <div className="font-mono font-bold text-xl">
-              [{dimensions.join(' × ')}]
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              {dimensions.length}D Tensor
-            </div>
+    <div className="py-4">
+      <div className="flex flex-wrap justify-center gap-4 items-end">
+        <div className="flex flex-col items-center">
+          <div className="text-xs font-bold mb-1">Combined</div>
+          <div className="grid gap-0.5" style={{ gridTemplateColumns: `repeat(${W}, 1.1rem)` }}>
+            {channels.R.map((_, i) => (
+              <div
+                key={i}
+                className="w-[1.1rem] h-[1.1rem] rounded-sm border border-black/5"
+                style={{ backgroundColor: `rgb(${Math.round(channels.R[i] * 255)},${Math.round(channels.G[i] * 255)},${Math.round(channels.B[i] * 255)})` }}
+              />
+            ))}
           </div>
         </div>
+        {renderChannel(channels.R, 'R', 'red')}
+        {renderChannel(channels.G, 'G', 'green')}
+        {renderChannel(channels.B, 'B', 'blue')}
+      </div>
+      <p className="text-center text-xs text-muted-foreground mt-3">
+        Shape <code className="bg-muted px-1 rounded">(3, 8, 8)</code> = 3 channels × 8 rows × 8 cols = 192 numbers.
+      </p>
+    </div>
+  )
+}
 
-        <div className="bg-muted/30 p-8 rounded-xl min-h-[200px] flex items-center justify-center">
-          {renderTensor()}
-        </div>
+function BatchView() {
+  const N = 4
+  return (
+    <div className="flex justify-center gap-2 py-4 flex-wrap">
+      {Array.from({ length: N }).map((_, n) => (
+        <motion.div
+          key={n}
+          initial={{ y: 10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: n * 0.1 }}
+          className="rounded-xl p-2 bg-gradient-to-br from-violet-500 to-blue-500 shadow"
+        >
+          <div className="text-[10px] text-white text-center mb-1">sample #{n}</div>
+          <div className="grid gap-0.5" style={{ gridTemplateColumns: 'repeat(6, 0.65rem)' }}>
+            {Array.from({ length: 36 }).map((_, i) => (
+              <div key={i} className="w-[0.65rem] h-[0.65rem] rounded-sm" style={{ backgroundColor: `hsl(${(n * 80 + i * 6) % 360}, 70%, 65%)` }} />
+            ))}
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  )
+}
 
-        <div className="flex gap-2 justify-center flex-wrap">
-          <Button
-            onClick={removeDimension}
-            disabled={dimensions.length === 1}
-            variant="outline"
-            size="lg"
-          >
-            <Minus weight="bold" />
-            Remove Dimension
+export function TensorVisualizer({ title, description }: TensorVisualizerProps) {
+  const [mode, setMode] = useState<Mode>('matrix')
+  const current = MODES.find((m) => m.key === mode)!
+
+  return (
+    <div className="rounded-2xl border bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 p-4 space-y-4">
+      <div>
+        <h4 className="font-bold">{title}</h4>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+
+      <div className="flex flex-wrap justify-center gap-1.5">
+        {MODES.map((m) => (
+          <Button key={m.key} size="sm" variant={mode === m.key ? 'default' : 'outline'} onClick={() => setMode(m.key)}>
+            {m.emoji} {m.dim}
           </Button>
-          <Button
-            onClick={addDimension}
-            disabled={dimensions.length === 3}
-            size="lg"
-          >
-            <Plus weight="bold" />
-            Add Dimension
-          </Button>
-        </div>
+        ))}
+      </div>
 
-        <div className="text-center text-sm text-muted-foreground">
-          {dimensions.length === 1 && "This is a 1D tensor - like a list of numbers!"}
-          {dimensions.length === 2 && "This is a 2D tensor - like a table or image!"}
-          {dimensions.length === 3 && "This is a 3D tensor - like stacked images or video frames!"}
-        </div>
-      </CardContent>
-    </Card>
+      <div className="flex items-center justify-center gap-2 text-sm flex-wrap">
+        <span className="font-bold">{current.label}</span>
+        <code className="bg-muted px-2 py-0.5 rounded text-xs">shape = {current.shape}</code>
+      </div>
+
+      <div className="min-h-[220px] flex items-center justify-center">
+        {mode === 'scalar' && <ScalarView />}
+        {mode === 'vector' && <VectorView />}
+        {mode === 'matrix' && <MatrixView />}
+        {mode === 'cube' && <CubeView />}
+        {mode === 'image' && <ImageView />}
+        {mode === 'batch' && <BatchView />}
+      </div>
+
+      <p className="text-center text-xs text-muted-foreground border-t pt-3">{current.desc}</p>
+    </div>
   )
 }
